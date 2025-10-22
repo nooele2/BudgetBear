@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "328816099343",
+    "project_id": "budget-bear",
+    "storage_bucket": "budget-bear.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:328816099343:android:a9441cf72a5253182ba37a",
+        "android_client_info": {
+          "package_name": "com.example.budget_bear"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBM5jDlcT6Qxapp0qWDm9Nrt1IRCykEym4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
