@@ -1,5 +1,8 @@
+import 'package:budget_bear/pages/home_page.dart';
+import 'package:budget_bear/pages/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:budget_bear/pages/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -25,14 +28,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> signUp() async {
   // Show loading indicator while signing up
-  /*showDialog(
+  showDialog(
     context: context,
     builder: (BuildContext context) {
       return Center(
         child: CircularProgressIndicator(),
       );
     },
-  );*/
+  );
 
   try {
     if (passwordConfirmed()) {
@@ -41,10 +44,11 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text.trim(),
       );
       // Navigate to HomePage after successful signup
-      /*Navigator.push(
+      Navigator.pop(context);
+      Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );*/
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     } else {
       // Handle password confirmation failure
       throw Exception("Password confirmation failed");

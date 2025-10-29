@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:budget_bear/pages/home_page.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -41,10 +42,10 @@ class _LoginPageState extends State<LoginPage> {
       password: passwordController.text
       );
     Navigator.pop(context);
-    /*Navigator.push(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => HomePage()), // Replace current page with HomePage
-    );*/
+    );
     } on FirebaseAuthException catch (e) {
       print(e);
       showDialog(
@@ -80,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                   // welcome back,you ve been missed
                 
                   Text(
-                    'Let\'s brew some Matcha!',
+                    'Track Smart. Spend Wise.',
                     style: GoogleFonts.italianno(
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
