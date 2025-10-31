@@ -5,10 +5,8 @@ import 'package:budget_bear/auth/auth_page.dart';
 import 'package:budget_bear/auth/auth_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:budget_bear/firebase_options.dart';
-
 class RecordPage extends StatefulWidget {
   const RecordPage({super.key});
-
   @override
   State<RecordPage> createState() => _RecordPageState();
 }
