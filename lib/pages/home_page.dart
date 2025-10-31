@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:budget_bear/pages/record_page.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -297,6 +298,15 @@ Future<List<dynamic>> fetchMemo() async {
             listType: _selectedIndex,
           ),*/
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RecordPage()),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
       drawer: trashCan.isEmpty ? Drawer(
       backgroundColor: const Color.fromARGB(255, 120, 144, 72),
