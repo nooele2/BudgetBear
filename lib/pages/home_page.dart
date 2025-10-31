@@ -1,303 +1,389 @@
-// ignore_for_file: unused_import, unused_local_variable, non_constant_identifier_names, collection_methods_unrelated_type, prefer_const_constructors, use_build_context_synchronously
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/widgets.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
 
-
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-  
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
-
 class _HomePageState extends State<HomePage> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final user = FirebaseAuth.instance.currentUser!;
-  FirestoreService firestoreservice = FirestoreService();
-  late Future<List<Note>> userNotes;
-  late Memo memo;
-  late String memoId;
-  List<String> trashCan=[];
-  exitsInTrashCan(Note note) => trashCan.contains(note);
-  int _selectedIndex = 0;
-  static const TextStyle optionStyle =
-      TextStyle(fontSize: 40, fontWeight: FontWeight.w500);
-  static const List<Widget> _widgetOptions = <Widget>[
-  Padding(
-    padding: const EdgeInsets.only(left: 20.0, top: 15.0, bottom: 5.0), // Adjust padding as needed
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'All Notes',
-        style: TextStyle(
-        color: Color.fromARGB(255, 31, 46, 0),
-        fontSize: 40,
-        fontWeight: FontWeight.bold// Setting underline color
+  final List<String> months = const [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  int currentMonthIndex = DateTime.now().month - 1;
+  OverlayEntry? _overlayEntry;
+
+  // Create dropdown popup near month selector
+  void _showMonthPopup(BuildContext context, Offset position) {
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: position.dx,
+        top: position.dy + 40,
+        child: Material(
+          elevation: 6,
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          child: Container(
+            width: 180,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 6),
+              ],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: months.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final month = entry.value;
+                  final bool selected = index == currentMonthIndex;
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        currentMonthIndex = index;
+                      });
+                      _removeMonthPopup();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color.fromRGBO(71, 168, 165, 1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Text(
+                            month,
+                            style: TextStyle(
+                              color: selected ? Colors.white : Colors.black87,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
       ),
-      ),
-    ),
-  ),
-  Padding(
-    padding: const EdgeInsets.only(left: 20.0, top: 15.0, bottom: 5.0), // Adjust padding as needed
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'Favorites',
-        style: TextStyle( 
-        color: Color.fromARGB(255, 31, 46, 0),
-        fontSize: 40,
-        fontWeight: FontWeight.bold// Setting underline color
-      ),
-      ),
-    ),
-  ),
-];
-
-
-      void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-    void toggleTrashCan(String docID) {
-    setState(() {
-      if (trashCan.contains(docID)) {
-        trashCan.remove(docID);
-      } else {
-        trashCan.add(docID);
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    userNotes = fetchNotes();
-    memo = Memo(title: '', description: '', timestamp: DateTime.now(), mood: 0); // Initialize memo with default values
-    firestoreservice.getOrCreateMemoForToday().then((data) {
-      final memoData = data['memo'] as Memo;
-      final id = data['id'] as String;
-      setState(() {
-        memo = memoData;
-        memoId = id;
-      });
-    }).catchError((error) {
-      // Handle error if getOrCreateMemoForToday() fails
-      print("Error getting or creating memo for today: $error");
-    });
-  }
-
-  Future<List<Note>> fetchNotes() async {
-    return firestoreservice.getNotes(user.uid);
-  }
-
-Future<List<dynamic>> fetchMemo() async {
-  final data = await firestoreservice.getOrCreateMemoForToday();
-  memo = data['memo'] as Memo;
-  final docID = data['id'] as String;
-  return [memo,docID];
-}
-
-  void SignUserOut() {
-    try {
-    FirebaseAuth.instance.signOut();
-    // Navigate to the login screen
-    Navigator.pop(context); 
-  } catch (e) {
-    print("Error signing out: $e");
-    // Handle error, show a snackbar, etc.
-  }
-  }
-
-  /*void createNote() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => CreateNote(onNewNoteCreated: onNewNoteCreated,),
-    ));
-  }
-
-  void editNote( String docID, Note note){
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => EditNote(
-        note: note,
-        id: docID,
-        onNoteEdited: onNoteEdited,
-        )
-      )
     );
-  }*/
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeMonthPopup() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _toggleMonthPopup(BuildContext context, GlobalKey key) {
+    if (_overlayEntry != null) {
+      _removeMonthPopup();
+      return;
+    }
+    final renderBox = key.currentContext!.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    _showMonthPopup(context, position);
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      currentMonthIndex =
+          (currentMonthIndex - 1 + months.length) % months.length;
+    });
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      currentMonthIndex = (currentMonthIndex + 1) % months.length;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    const Color accent = Color.fromRGBO(71, 168, 165, 1);
+    const Color bgColor = Color(0xFFF5F7FA);
+    const Color textColor = Color(0xFF333333);
+
+    final GlobalKey monthKey = GlobalKey();
+
     return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: CupertinoColors.systemGroupedBackground,
-      appBar: trashCan.isEmpty ? AppBar(
-        backgroundColor: Color.fromRGBO(120, 144, 72, 1),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: IconButton(
-                  icon: Icon(
-                    Icons.menu,
-                    size: 35,
-                    color: Colors.white, // Adjust the size as needed
-                  ),
-                  onPressed: () {
-                    _scaffoldKey.currentState!.openDrawer();
-                  },
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting Header
+              const Text(
+                "Hello, Alex!",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
                 ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: PopupMenuButton(
-              offset: const Offset(0, 45), // Adjust the values as needed
-              itemBuilder: (BuildContext context) {
-                return [
-                  PopupMenuItem(
-                    child: Row(
-                      children: [
-                        Icon(Icons.account_circle, size: 40, color: Color.fromRGBO(120, 144, 72, 1)),
-                        SizedBox(width: 8),
-                        Text(
-                          FirebaseAuth.instance.currentUser!.email!,
-                          style: TextStyle(fontSize: 15),
-                          softWrap: true,
-                        ),
-                      ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Here's your financial summary",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // 🔹 Month Selector (with popup)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, size: 28),
+                    color: accent,
+                    onPressed: _goToPreviousMonth,
+                  ),
+                  GestureDetector(
+                    key: monthKey,
+                    onTap: () => _toggleMonthPopup(context, monthKey),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withOpacity(0.3),
+                            blurRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            months[currentMonthIndex],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white),
+                        ],
+                      ),
                     ),
                   ),
-                ];
-              },
-              icon: const Icon(Icons.account_circle, size: 40, color: Colors.white),
-              color: Colors.white,
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-        ],
-      ):AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Color.fromRGBO(184, 202, 148, 1),
-                actions: [Padding(
-          padding: const EdgeInsets.only(right: 1.0),
-          child: IconButton(
-            onPressed: (){
-              setState(() {
-                for(String docID in trashCan){
-                  firestoreservice.toggleLocked(docID);
-                }
-                trashCan.clear();
-              });
-            }, 
-            icon: Icon(Icons.lock_open, size: 27, color: const Color.fromARGB(255, 69, 69, 69),)),
-        ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: IconButton(
-              icon: const Icon(Icons.delete, size: 30, color: const Color.fromARGB(255, 69, 69, 69),),
-              onPressed:(){
-              
-              setState((){
-                for(String docID in trashCan){
-                  firestoreservice.deleteNote(docID);
-                }
-                trashCan.clear();
-              });
-            }),
-          )],      
-      ),
-      body: Column(
-        children:[
-          Padding(
-  padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-  child: SizedBox(
-    width: double.infinity,
-        height: 180,
-    child: GestureDetector(
-     /* onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => MemoPage(
-        memo: memo,
-        id: memoId,
-        onMemoEdited: onMemoEdited,
-        )
-      )
-    );
-                 
-      },*/
-      child: Card(
-        color: const Color.fromARGB(255, 120, 144, 72),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25.0),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18, 8, 18, 8),
-          child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, size: 28),
+                    color: accent,
+                    onPressed: _goToNextMonth,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Responsive Summary Cards Layout
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool isWide = constraints.maxWidth > 600;
+
+                  if (isWide) {
+                    // --- 3 columns (Web/Desktop) ---
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _summaryCard(
+                            title: "Total Spending",
+                            amount: "\$1,250.75",
+                            icon: Icons.arrow_downward,
+                            color: Colors.redAccent,
+                            width: double.infinity,
+                            height: 130,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _summaryCard(
+                            title: "Total Income",
+                            amount: "\$3,500.00",
+                            icon: Icons.arrow_upward,
+                            color: Colors.green,
+                            width: double.infinity,
+                            height: 130,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _summaryCard(
+                            title: "Net Savings",
+                            amount: "\$2,249.25",
+                            icon: Icons.account_balance_wallet,
+                            color: accent,
+                            width: double.infinity,
+                            height: 130,
+                          ),
+                        ),
+                      ],
+                    );
+                  } else {
+                    // --- 3 rows (Mobile) ---
+                    return Column(
+                      children: [
+                        _summaryCard(
+                          title: "Total Spending",
+                          amount: "\$1,250.75",
+                          icon: Icons.arrow_downward,
+                          color: Colors.redAccent,
+                          width: double.infinity,
+                          height: 130,
+                        ),
+                        const SizedBox(height: 12),
+                        _summaryCard(
+                          title: "Total Income",
+                          amount: "\$3,500.00",
+                          icon: Icons.arrow_upward,
+                          color: Colors.green,
+                          width: double.infinity,
+                          height: 130,
+                        ),
+                        const SizedBox(height: 12),
+                        _summaryCard(
+                          title: "Net Savings",
+                          amount: "\$2,249.25",
+                          icon: Icons.account_balance_wallet,
+                          color: accent,
+                          width: double.infinity,
+                          height: 130,
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Responsive Charts Layout
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool isWide = constraints.maxWidth > 600;
+
+                  if (isWide) {
+                    // --- 2 Columns (Web/Desktop) ---
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _donutChartCard(accent)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _barChartCard(accent)),
+                      ],
+                    );
+                  } else {
+                    // --- 2 Rows (Mobile) ---
+                    return Column(
+                      children: [
+                        _donutChartCard(accent),
+                        const SizedBox(height: 16),
+                        _barChartCard(accent),
+                      ],
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Spending Alert
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, right: 8, top: 7),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          memo.title,
-                          style: GoogleFonts.patrickHand(
-                            fontSize: 30,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold
-                          ),
-                        ),
-                      ),
-                    ),SizedBox(height: 15,),
-                    Container(
-                      padding: EdgeInsets.all( 7),
-                      width: double.infinity,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemGroupedBackground,
-                        borderRadius: BorderRadius.circular(5)
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                           memo.description,
-                          style: GoogleFonts.patrickHand(
-                            fontSize: 20,
-                            color:  Colors.black,
-                            fontWeight: FontWeight.w200
-                          ),
-                          
-                        ),
+                    Icon(Icons.warning_amber_rounded, color: accent, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "You're close to exceeding your weekly food budget!",
+                        style: TextStyle(color: accent, fontSize: 16),
                       ),
                     ),
                   ],
-                )
-            
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Recent Transactions
+              const Text(
+                "Recent Transactions",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _transactionTile(
+                "Groceries",
+                "Walmart",
+                "-\$120.00",
+                Icons.shopping_cart,
+                Colors.redAccent,
+              ),
+              _transactionTile(
+                "Salary",
+                "Company XYZ",
+                "+\$3,500.00",
+                Icons.attach_money,
+                Colors.green,
+              ),
+              _transactionTile(
+                "Utilities",
+                "Electric Bill",
+                "-\$85.50",
+                Icons.flash_on,
+                Colors.orangeAccent,
+              ),
+              _transactionTile(
+                "Restaurant",
+                "Pizza Place",
+                "-\$45.00",
+                Icons.restaurant,
+                accent,
+              ),
+            ],
           ),
         ),
-      ),
-    ),
-  ),
-
-         /* _widgetOptions[_selectedIndex],
-          NotesList(
-            user: user,
-            firestoreservice: firestoreservice,
-            onNoteSelected: editNote,
-            trashCan: trashCan,
-            toggleTrashCan: toggleTrashCan,
-            listType: _selectedIndex,
-          ),*/
-        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -306,251 +392,232 @@ Future<List<dynamic>> fetchMemo() async {
             MaterialPageRoute(builder: (context) => const RecordPage()),
           );
         },
+        backgroundColor: accent,
         child: const Icon(Icons.add),
       ),
-      drawer: trashCan.isEmpty ? Drawer(
-      backgroundColor: const Color.fromARGB(255, 120, 144, 72),
-      // Add a ListView to the drawer. This ensures the user can scroll
-      // through the options in the drawer if there isn't enough vertical
-      // space to fit everything.
-      child: ListView(         
-        // Important: Remove any padding from the ListView.
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  // --- Helper Widgets ---
+  Widget _buildTab(String label, bool selected, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: selected ? accent : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: selected
+            ? [BoxShadow(color: accent.withOpacity(0.3), blurRadius: 5)]
+            : [BoxShadow(color: Colors.black12, blurRadius: 3)],
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : Colors.grey[700],
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryCard({
+    required String title,
+    required String amount,
+    required IconData icon,
+    required Color color,
+    required double width,
+    required double height,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 30,),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          const Spacer(),
+          Text(
+            amount,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _donutChartCard(Color accent) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Spending Breakdown",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
           SizedBox(
-            height: 90,
-            child: DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.white, // Set the background color to white
-                border: Border(
-                  bottom: Divider.createBorderSide(
-                    context,
-                    color: Colors.white,
-                    width: 2.0,
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Image.asset(
-                    'assets/images/matcha.png',
-                    height: 40,
-                    width: 40,
-                  ),
-                  SizedBox(
-                    width: 10,
-                  ),
-                  //Row(
-                    //children: [
-                      Text(
-                        'MATCHA-NOTE',
-                        style: TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 120, 144, 72),
-                        ),
-                      ),
-                      /*Text(
-                        '-',
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.white,
-                        ),
-                      ),*/
-                    //],
-                  //),
+            height: 180,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                sections: [
+                  PieChartSectionData(
+                      color: accent, value: 40, title: 'Food', radius: 40),
+                  PieChartSectionData(
+                      color: Colors.orange, value: 25, title: 'Bills', radius: 40),
+                  PieChartSectionData(
+                      color: Colors.blueAccent,
+                      value: 20,
+                      title: 'Shopping',
+                      radius: 40),
+                  PieChartSectionData(
+                      color: Colors.purpleAccent,
+                      value: 15,
+                      title: 'Other',
+                      radius: 40),
                 ],
               ),
             ),
-          ),           
-          ListTile(
-            leading: const Icon(
-              Icons.home,
-              color: Colors.white,
-              ),
-            title: Text(
-                'All Notes',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            selected: _selectedIndex == 0,
-            onTap: () {
-              // Update the state of the app
-              _onItemTapped(0);
-              // Then close the drawer
-              Navigator.pop(context);
-            },
           ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-            leading: const Icon(
-              Icons.star,
-              color: Colors.white,
-              ),
-            title: Text(
-                'Favorites',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            selected: _selectedIndex == 1,
-            onTap: () {
-              // Update the state of the app
-              _onItemTapped(1);
-              // Then close the drawer
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-            leading: const Icon(
-              Icons.lock,
-              color: Colors.white,
-              ),
-            title: const Text('Locked Notes',
-            style: TextStyle(fontSize: 20, color: Colors.white)),
-            onTap: () {
-              showReauthenticationDialog(context);              
-            },
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          const SizedBox(
-            height: 470,
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-              leading: const Icon(
-                Icons.logout,
-                size: 25,
-                color: Colors.white,
-                ),
-              title: const Text('Log Out',
-              style: TextStyle(fontSize: 20, color: Colors.white)),
-              onTap: () {
-                // Update the state of the app
-                SignUserOut();
-                
-                // Then close the drawer
-                Navigator.pop(context);
-              },
-            ),
         ],
       ),
-    ):null,
-      /*floatingActionButton: _selectedIndex == 1 // Check if it's the favorites screen
-        ? null // If it's the favorites screen, set FloatingActionButton to null
-        : trashCan.isEmpty ? FloatingActionButton(
-            backgroundColor: Color.fromRGBO(120, 144, 72, 1),
-            onPressed: createNote,
-            child: const Icon(Icons.add, color: Colors.white,),
-          ):null,*/
     );
   }
 
-  Future<void> onNewNoteCreated() async {
-    userNotes = fetchNotes(); 
-    setState(() {  
-       
-      },
+  Widget _barChartCard(Color accent) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Spending Trend",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                barGroups: [
+                  _barGroup(0, 8),
+                  _barGroup(1, 5),
+                  _barGroup(2, 9),
+                  _barGroup(3, 6),
+                  _barGroup(4, 10),
+                  _barGroup(5, 7),
+                  _barGroup(6, 4),
+                ],
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (v, _) {
+                        const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                        return Text(days[v.toInt()]);
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> onNoteEdited() async {
-    userNotes = fetchNotes();
-    setState(() {
-      
-    });
+  BarChartGroupData _barGroup(int x, double y) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          color: const Color.fromRGBO(71, 168, 165, 1),
+          width: 14,
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ],
+    );
   }
 
-  Future<void> onMemoEdited() async {
-    var data = await fetchMemo();
-
-    setState((){    memo = data[0];
-    memoId = data[1];});
-  }
-
-  void showReauthenticationDialog(BuildContext context) async {
-  String? password;
-  String? errorMessage;
-
-  await showDialog(
-  context: context,
-  builder: (BuildContext context) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return AlertDialog(
-          title: Text('Enter Your Account Password!'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (errorMessage != null) // Display error message if not null
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    errorMessage!,
-                    style: TextStyle(color: Colors.red),
+  Widget _transactionTile(
+    String title,
+    String subtitle,
+    String amount,
+    IconData icon,
+    Color iconColor,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: iconColor.withOpacity(0.15),
+            child: Icon(icon, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
-              TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'Enter your password',
-                  prefixIcon: Icon(Icons.lock),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 ),
-                onChanged: (value) => password = value,
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
+              ],
             ),
-            /*ElevatedButton(
-              onPressed: () async {
-                try {
-                  // Sign in the user with the provided password
-                  final UserCredential userCredential =
-                      await FirebaseAuth.instance.signInWithEmailAndPassword(
-                    email: FirebaseAuth.instance.currentUser!.email!,
-                    password: password!,
-                  );
-
-                  // If reauthentication is successful, close the dialog
-                  Navigator.pop(context);
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (context) => LockPage(),
-                  ));
-                } catch (e) {
-                  // Display an error message if reauthentication fails
-                  setState(() {
-                    errorMessage = 'Reauthentication failed: $e';
-                  });
-                }
-              },
-              child: Text('Submit'),
-            ),*/
-          ],
-        );
-      },
+          ),
+          Text(
+            amount,
+            style: TextStyle(
+              color: amount.startsWith('-') ? Colors.redAccent : Colors.green,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
-  },
-);
-}
+  }
 }
