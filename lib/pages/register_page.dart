@@ -1,5 +1,8 @@
+import 'package:budget_bear/pages/home_page.dart';
+import 'package:budget_bear/pages/login_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:budget_bear/pages/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -25,14 +28,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> signUp() async {
   // Show loading indicator while signing up
-  /*showDialog(
+  showDialog(
     context: context,
     builder: (BuildContext context) {
       return Center(
         child: CircularProgressIndicator(),
       );
     },
-  );*/
+  );
 
   try {
     if (passwordConfirmed()) {
@@ -41,10 +44,11 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text.trim(),
       );
       // Navigate to HomePage after successful signup
-      /*Navigator.push(
+      Navigator.pop(context);
+      Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );*/
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
     } else {
       // Handle password confirmation failure
       throw Exception("Password confirmation failed");
@@ -79,7 +83,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: const Color.fromRGBO(186, 230, 229, 1),
+      backgroundColor: const Color.fromRGBO(232, 237, 237, 1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -89,7 +93,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   //logo
                   Image.asset(
-                    'assets/images/matcha2.png',
+                    'assets/images/budgetbear.png',
                     height: 100,
                     width: 120,
                   ),
@@ -110,8 +114,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
+                        color: const Color.fromRGBO(251, 255, 255, 1),
+                        border: Border.all(color: const Color.fromRGBO(251, 255, 255, 1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
@@ -134,8 +138,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
+                        color: const Color.fromRGBO(251, 255, 255, 1),
+                        border: Border.all(color: const Color.fromRGBO(251, 255, 255, 1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
@@ -156,8 +160,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
+                        color: const Color.fromRGBO(251, 255, 255, 1),
+                        border: Border.all(color: const Color.fromRGBO(251, 255, 255, 1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(

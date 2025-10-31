@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:budget_bear/pages/home_page.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -41,10 +42,10 @@ class _LoginPageState extends State<LoginPage> {
       password: passwordController.text
       );
     Navigator.pop(context);
-    /*Navigator.push(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => HomePage()), // Replace current page with HomePage
-    );*/
+    );
     } on FirebaseAuthException catch (e) {
       print(e);
       showDialog(
@@ -63,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: const Color.fromRGBO(186, 230, 229, 1),
+      backgroundColor: const Color.fromRGBO(232, 237, 237, 1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -73,14 +74,14 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   //logo
                   Image.asset(
-                    'assets/images/matcha2.png',
+                    'assets/images/budgetbear.png',
                     height: 100,
                     width: 120,
                   ),
                   // welcome back,you ve been missed
                 
                   Text(
-                    'Let\'s brew some Matcha!',
+                    'Track Smart. Spend Wise.',
                     style: GoogleFonts.italianno(
                       fontWeight: FontWeight.w700,
                       fontSize: 24,
@@ -94,8 +95,8 @@ class _LoginPageState extends State<LoginPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
+                        color: const Color.fromRGBO(251, 255, 255, 1),
+                        border: Border.all(color: const Color.fromRGBO(251, 255, 255, 1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
@@ -118,8 +119,8 @@ class _LoginPageState extends State<LoginPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
+                        color: const Color.fromRGBO(251, 255, 255, 1),
+                        border: Border.all(color: const Color.fromRGBO(251, 255, 255, 1)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
