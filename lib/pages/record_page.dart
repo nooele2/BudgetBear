@@ -94,7 +94,7 @@ class _RecordPageState extends State<RecordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              //toggle for income/expense
+              //toggle for income and expense
               Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -222,7 +222,7 @@ class _RecordPageState extends State<RecordPage> {
         ),
       ),
 
-      //buttom --> button and nav bar
+      //bottom --> button and nav bar
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -284,7 +284,7 @@ class _RecordPageState extends State<RecordPage> {
               ),
             ),
           ),
-          const BottomNavBar(currentIndex: 1), 
+          const BottomNavBar(currentIndex: 2), 
         ],
       ),
       //end of button and nav bar
