@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
+import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -434,6 +435,8 @@ Future<void> _loadUserName() async {
           ).then((_) => _loadSummaryData());
         },
       ),
+      //navbar 
+      bottomNavigationBar: const BottomNavBar(currentIndex: 0), 
     );
   }
 

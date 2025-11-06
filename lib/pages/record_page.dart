@@ -6,6 +6,8 @@ import 'package:budget_bear/auth/auth_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:budget_bear/firebase_options.dart';
 import 'package:budget_bear/pages/home_page.dart';
+import 'package:budget_bear/pages/more_page.dart';
+import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 import 'package:budget_bear/services/firestore.dart';
 
 class RecordPage extends StatefulWidget {
@@ -220,55 +222,72 @@ class _RecordPageState extends State<RecordPage> {
         ),
       ),
 
-      //add record button
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              if (_selectedDate == null || _selectedCategory == null || _spentAmount == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all required fields')),
-                );
-                return;
-              }
+      //buttom --> button and nav bar
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  if (_selectedDate == null ||
+                      _selectedCategory == null ||
+                      _spentAmount == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please fill all required fields')),
+                    );
+                    return;
+                  }
 
-              try {
-                final firestoreService = FirestoreService();
-                await firestoreService.addTransaction(
-                  title: _notes ?? '',
-                  category: _selectedCategory!,
-                  amount: _spentAmount!.toDouble(),
-                  type: _transactionType,
-                  date: _selectedDate!,
-                );
+                  try {
+                    final firestoreService = FirestoreService();
+                    await firestoreService.addTransaction(
+                      title: _notes ?? '',
+                      category: _selectedCategory!,
+                      amount: _spentAmount!.toDouble(),
+                      type: _transactionType,
+                      date: _selectedDate!,
+                    );
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${_transactionType == 'expense' ? 'Expense' : 'Income'} added!')),
-                );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${_transactionType == 'expense' ? 'Expense' : 'Income'} added!',
+                        ),
+                      ),
+                    );
 
-                Navigator.pop(context);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error adding transaction: $e')),
-                );
-              }
-            },
-            icon: const Icon(Icons.check),
-            label: Text(
-              _transactionType == 'expense' ? 'Add Expense' : 'Add Income',//dynamic
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    Navigator.pop(context);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error adding transaction: $e')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check),
+                label: Text(
+                  _transactionType == 'expense'
+                      ? 'Add Expense'
+                      : 'Add Income',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+          const BottomNavBar(currentIndex: 1), 
+        ],
       ),
+      //end of button and nav bar
     );
   }
 }
