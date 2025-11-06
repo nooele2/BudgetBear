@@ -6,6 +6,7 @@ import 'package:budget_bear/auth/auth_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:budget_bear/firebase_options.dart';
 import 'package:budget_bear/pages/home_page.dart';
+import 'package:budget_bear/services/firestore.dart';
 
 class RecordPage extends StatefulWidget {
   const RecordPage({super.key});
@@ -201,8 +202,9 @@ class _RecordPageState extends State<RecordPage> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton.icon(
+
             //add logic
-            onPressed: () {
+            onPressed: () async {
               if (_selectedDate == null || _selectedCategory == null || _spentAmount == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please fill all required fields')),
@@ -210,24 +212,25 @@ class _RecordPageState extends State<RecordPage> {
                 return;
               }
 
-              /*
-              //a map of the expense info
-              final expenseData = {
-                'date': DateFormat('dd MMM yyyy').format(_selectedDate!),
-                'category': _selectedCategory!,
-                'amount': _spentAmount!,
-                'notes': _notes ?? '',
-              };
+              try {
+                final firestoreService = FirestoreService();
+                await firestoreService.addTransaction(
+                  title: _notes ?? '', // allow null
+                  category: _selectedCategory!,
+                  amount: _spentAmount!.toDouble(),
+                  type: 'expense', 
+                  date: _selectedDate,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Expense added successfully!')),
+                );
+                Navigator.pop(context); // go back to HomePage
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error adding expense: $e')),
+                );
+              }
 
-              //navigate to home page and pass data....看homepage改
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => HomePage(expenseData: expenseData),
-                ),
-              );
-            */
-            
             },
             icon: const Icon(Icons.check),
             label: const Text('Add Expense'),
