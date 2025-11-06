@@ -362,7 +362,7 @@ Future<void> _loadUserName() async {
                           children: [
                             Expanded(child: _donutChartCard(categoryData)),
                             const SizedBox(width: 16),
-                            Expanded(child: _barChartCard(accent)),
+                            Expanded(child: _barChartCard(categoryData)),
                           ],
                         );
                       } else {
@@ -370,7 +370,7 @@ Future<void> _loadUserName() async {
                           children: [
                             _donutChartCard(categoryData),
                             const SizedBox(height: 16),
-                            _barChartCard(accent),
+                            _barChartCard(categoryData),
                           ],
                         );
                       }
@@ -541,7 +541,7 @@ Future<void> _loadUserName() async {
 }
 
 
-  Widget _barChartCard(Color accent) {
+  Widget _barChartCard(Map<String, double> categoryData) {
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.all(16),
