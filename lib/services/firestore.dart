@@ -1,221 +1,141 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class Note {
-  String title;
-  String description;
-  DateTime timestamp;
-  bool isFavourtie;
-  bool isLocked;
-
-  Note({
-    required this.title,
-    required this.description,
-    required this.timestamp,
-    required this.isFavourtie,
-    required this.isLocked
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      'description': description,
-      'timestamp': timestamp,
-      'isFavourite': isFavourtie,
-      'isLocked': isLocked,
-    };
-  }
-}
-
-class Memo{
-
-  String title;
-  String description;
-  DateTime timestamp;
-  int mood;
-
-  Memo({
-    required this.title,
-    required this.description,
-    required this.timestamp,
-    required this.mood
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      'description': description,
-      'timestamp': timestamp,
-      'mood': mood,
-    };
-  }
-
-    factory Memo.fromJson(Map<String, dynamic> json) {
-    return Memo(
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      timestamp: (json['timestamp'] as Timestamp).toDate(),
-      mood: json['mood'] ?? 0,
-    );
-  }
-}
-
 class FirestoreService {
-  final user = FirebaseAuth.instance.currentUser!;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  //get collection of notes
-        CollectionReference userNotesCollection = FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .collection('notes');
-        
-        CollectionReference userMemoCollection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .collection('memos');
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Get current logged-in user's ID
+  String get userId {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+    return user.uid;
+  }
 
-  //create
-Future<void> addNote(String userId, Note note) async {
+  /// Fetch user's display name from Firestore
+  Future<String?> getUserName() async {
     try {
-      // Reference to the notes subcollection under the user's document
-
-      // Add the note document to the user's notes subcollection
-      userNotesCollection.add(note.toMap());
-
-      print('Note added successfully!');
+      final doc = await _db.collection('users').doc(userId).get();
+      if (doc.exists && doc.data()!.containsKey('name')) {
+        return doc['name'];
+      } else {
+        return null;
+      }
     } catch (e) {
-      print('Error adding note: $e');
-    }
-  }
-
-Future<Map<String, dynamic>> getOrCreateMemoForToday() async {
-  try {
-    DateTime today = DateTime.now();
-    DateTime startOfDay = DateTime(today.year, today.month, today.day);
-    DateTime endOfDay = startOfDay.add(Duration(days: 1));
-
-    QuerySnapshot<Map<String, dynamic>> querySnapshot =
-        await userMemoCollection
-            .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-            .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
-            .get() as QuerySnapshot<Map<String, dynamic>>;
-
-    if (querySnapshot.docs.isNotEmpty) {
-      // Memo already exists for today, return the first one found with its ID
-      final id = querySnapshot.docs.first.id;
-      final memoData = querySnapshot.docs.first.data();
-      return {'id': id, 'memo': Memo.fromJson(memoData)};
-    } else {
-      // No memo exists for today, create a new one and return its ID
-      Memo newMemo = Memo(title: "Daily Memo", description: "Write your memo here!", timestamp: startOfDay, mood: 0);
-      DocumentReference docRef = await userMemoCollection.add(newMemo.toMap());
-      return {'id': docRef.id, 'memo': newMemo};
-    }
-  } catch (e) {
-    print("Error getting or creating memo for today: $e");
-    throw e; // Rethrow the error to handle it outside
-  }
-}
-
-  // Function to edit the memo
-  Future<void> editMemo(String memoId, String newTitle, String newDescription) async {
-    try {
-      await userMemoCollection.doc(memoId).update({
-        'title': newTitle,
-        'description': newDescription,
-      });
-      print('edit success');
-    } catch (e) {
-      print("Error editing memo: $e");
-    }
-  }
-
-Future<Memo?> getMemoForDate(DateTime date) async {
-  try {
-    DateTime _selectedDate= date;
-    DateTime startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    DateTime endOfDay = startOfDay.add(Duration(days: 1));
-    
-    QuerySnapshot<Map<String, dynamic>> querySnapshot = await userMemoCollection
-      .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-      .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
-      .get() as QuerySnapshot<Map<String, dynamic>>;
-    
-    if(querySnapshot.docs.isNotEmpty){
-      Map<String,dynamic> memoData = querySnapshot.docs.first.data();
-      return Memo.fromJson(memoData);
-    } else {
+      print('FirestoreService.getUserName error: $e');
       return null;
     }
-  } catch (e) {
-    print('Error fetching memo for date: $e');
-    return null;
-  }      
-}
+  }
 
+  /// Fetch all transactions for a specific year and month
+  Future<List<Map<String, dynamic>>> getTransactions(int year, int month) async {
+    try {
+      final start = DateTime(year, month, 1);
+      final nextMonth = (month < 12)
+          ? DateTime(year, month + 1, 1)
+          : DateTime(year + 1, 1, 1);
 
-  Future<List<Note>> getNotes(String userId) async {
-  List<Note> notes = [];
-  try {
-    QuerySnapshot querySnapshot = await userNotesCollection.orderBy('timestamp',descending: true).get();
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('date', isLessThan: Timestamp.fromDate(nextMonth))
+          .orderBy('date', descending: true)
+          .get();
 
-    querySnapshot.docs.forEach((doc) {
-      Note note = Note(
-        title: doc['title'],
-        description: doc['description'],
-        timestamp: doc['timestamp'].toDate(),
-        isFavourtie: doc['isFavourite'],
-        isLocked: doc['isLocked']
-      );
-      notes.add(note);
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        if (data['amount'] is num) {
+          data['amount'] = (data['amount'] as num).toDouble();
+        }
+        return data;
+      }).toList();
+    } catch (e) {
+      print('FirestoreService.getTransactions error: $e');
+      return [];
+    }
+  }
+
+  /// Get monthly summary data (income, expenses, and spending by category)
+  Future<Map<String, dynamic>> getSummaryData(int year, int month) async {
+    try {
+      final transactions = await getTransactions(year, month);
+      double totalIncome = 0.0;
+      double totalExpense = 0.0;
+      final Map<String, double> categories = {};
+
+      for (final tx in transactions) {
+        final amount =
+            (tx['amount'] is num) ? (tx['amount'] as num).toDouble() : 0.0;
+        final type = (tx['type'] ?? '').toString().toLowerCase();
+        final category = (tx['category'] ?? 'Other').toString();
+
+        if (type == 'income') {
+          totalIncome += amount;
+        } else {
+          totalExpense += amount;
+          categories[category] = (categories[category] ?? 0.0) + amount;
+        }
+      }
+
+      return {
+        'income': totalIncome,
+        'expense': totalExpense,
+        'categories': categories,
+      };
+    } catch (e) {
+      print('FirestoreService.getSummaryData error: $e');
+      return {
+        'income': 0.0,
+        'expense': 0.0,
+        'categories': <String, double>{},
+      };
+    }
+  }
+
+  /// Stream of recent transactions (latest 10)
+  Stream<List<Map<String, dynamic>>> getRecentTransactionsStream() {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream.empty();
+
+    return _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('transactions')
+        .orderBy('date', descending: true)
+        .limit(10)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              if (data['amount'] is num) {
+                data['amount'] = (data['amount'] as num).toDouble();
+              }
+              return data;
+            }).toList());
+  }
+
+  /// Helper for adding a transaction (used in testing or record page)
+  Future<void> addTransaction({
+    required String title,
+    required String category,
+    required double amount,
+    required String type, // 'income' or 'expense'
+    DateTime? date,
+  }) async {
+    final ref = _db
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .doc();
+
+    await ref.set({
+      'title': title,
+      'category': category,
+      'amount': amount,
+      'type': type,
+      'date': Timestamp.fromDate(date ?? DateTime.now()),
+      'createdAt': FieldValue.serverTimestamp(),
     });
-  } catch (e) {
-    print('Error getting notes: $e');
-  }
-  return notes;
-  }
-
-  Future<void> updateNote(String docID, Note note) async {
-    try{
-      userNotesCollection.doc(docID).update(note.toMap());
-      print('Note updated successfully');
-    } catch (e){
-      print('Error updating note $e');
-    }
-  }
-
-  Stream<QuerySnapshot> getNotesStream(){
-    final notesStream = 
-      userNotesCollection.orderBy('timestamp',descending: true).snapshots();
-    return notesStream;
-  }
-
-  Future<void> deleteNote(String docID){
-    return userNotesCollection.doc(docID).delete();
-  }
-
-  Future<void> toggleFavourite(String docID) async{
-    try{
-      DocumentReference noteRef = userNotesCollection.doc(docID);
-      DocumentSnapshot snapshot = await noteRef.get();
-      bool currentFavourite = snapshot.get('isFavourite');
-      await noteRef.update({'isFavourite': !currentFavourite});
-      print('Favourite status toggled successfully');
-    }catch(e){
-      print('Error toggling favourite status: $e');
-    }
-  }
-
-  Future<void> toggleLocked(String docID) async{
-    try{
-      DocumentReference noteRef = userNotesCollection.doc(docID);
-      DocumentSnapshot snapshot = await noteRef.get();
-      bool currentLocked = snapshot.get('isLocked');
-      await noteRef.update({'isLocked': !currentLocked});
-      print('Locked status toggled successfully');
-    }catch(e){
-      print('Error toggling Locked status: $e');
-    }
   }
 }

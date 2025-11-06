@@ -9,7 +9,6 @@ import 'package:budget_bear/pages/home_page.dart';
 
 class RecordPage extends StatefulWidget {
   const RecordPage({super.key});
-
   @override
   State<RecordPage> createState() => _RecordPageState();
 }

@@ -1,556 +1,625 @@
-// ignore_for_file: unused_import, unused_local_variable, non_constant_identifier_names, collection_methods_unrelated_type, prefer_const_constructors, use_build_context_synchronously
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
 
-
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-  
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final user = FirebaseAuth.instance.currentUser!;
-  FirestoreService firestoreservice = FirestoreService();
-  late Future<List<Note>> userNotes;
-  late Memo memo;
-  late String memoId;
-  List<String> trashCan=[];
-  exitsInTrashCan(Note note) => trashCan.contains(note);
-  int _selectedIndex = 0;
-  static const TextStyle optionStyle =
-      TextStyle(fontSize: 40, fontWeight: FontWeight.w500);
-  static const List<Widget> _widgetOptions = <Widget>[
-  Padding(
-    padding: const EdgeInsets.only(left: 20.0, top: 15.0, bottom: 5.0), // Adjust padding as needed
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'All Notes',
-        style: TextStyle(
-        color: Color.fromARGB(255, 31, 46, 0),
-        fontSize: 40,
-        fontWeight: FontWeight.bold// Setting underline color
-      ),
-      ),
-    ),
-  ),
-  Padding(
-    padding: const EdgeInsets.only(left: 20.0, top: 15.0, bottom: 5.0), // Adjust padding as needed
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'Favorites',
-        style: TextStyle( 
-        color: Color.fromARGB(255, 31, 46, 0),
-        fontSize: 40,
-        fontWeight: FontWeight.bold// Setting underline color
-      ),
-      ),
-    ),
-  ),
-];
+  final FirestoreService firestoreService = FirestoreService();
 
+  final List<String> months = const [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
 
-      void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  int selectedYear = DateTime.now().year;
+  int currentMonthIndex = DateTime.now().month - 1;
 
-    void toggleTrashCan(String docID) {
-    setState(() {
-      if (trashCan.contains(docID)) {
-        trashCan.remove(docID);
-      } else {
-        trashCan.add(docID);
-      }
-    });
-  }
+  double totalSpending = 0.0;
+  double totalIncome = 0.0;
+  Map<String, double> categoryData = {};
+
+  bool isLoading = true;
+  String userName = '';
 
   @override
-  void initState() {
-    super.initState();
-    userNotes = fetchNotes();
-    memo = Memo(title: '', description: '', timestamp: DateTime.now(), mood: 0); // Initialize memo with default values
-    firestoreservice.getOrCreateMemoForToday().then((data) {
-      final memoData = data['memo'] as Memo;
-      final id = data['id'] as String;
-      setState(() {
-        memo = memoData;
-        memoId = id;
-      });
-    }).catchError((error) {
-      // Handle error if getOrCreateMemoForToday() fails
-      print("Error getting or creating memo for today: $error");
-    });
-  }
-
-  Future<List<Note>> fetchNotes() async {
-    return firestoreservice.getNotes(user.uid);
-  }
-
-Future<List<dynamic>> fetchMemo() async {
-  final data = await firestoreservice.getOrCreateMemoForToday();
-  memo = data['memo'] as Memo;
-  final docID = data['id'] as String;
-  return [memo,docID];
+void initState() {
+  super.initState();
+  _loadUserName();
+  _loadSummaryData();
 }
 
-  void SignUserOut() {
-    try {
-    FirebaseAuth.instance.signOut();
-    // Navigate to the login screen
-    Navigator.pop(context); 
-  } catch (e) {
-    print("Error signing out: $e");
-    // Handle error, show a snackbar, etc.
-  }
-  }
+Future<void> _loadUserName() async {
+  final name = await firestoreService.getUserName();
+  setState(() {
+    userName = name ?? "User";
+  });
+}
 
-  /*void createNote() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => CreateNote(onNewNoteCreated: onNewNoteCreated,),
-    ));
+  String _getGreeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) {
+    return "Good Morning";
+  } else if (hour < 17) {
+    return "Good Afternoon";
+  } else {
+    return "Good Evening";
   }
+}
 
-  void editNote( String docID, Note note){
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => EditNote(
-        note: note,
-        id: docID,
-        onNoteEdited: onNoteEdited,
-        )
-      )
+  Future<void> _loadSummaryData() async {
+    setState(() => isLoading = true);
+    final summary = await firestoreService.getSummaryData(
+      selectedYear,
+      currentMonthIndex + 1,
     );
-  }*/
+    setState(() {
+      totalIncome = summary['income'] ?? 0.0;
+      totalSpending = summary['expense'] ?? 0.0;
+      categoryData = Map<String, double>.from(summary['categories'] ?? {});
+      isLoading = false;
+    });
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: CupertinoColors.systemGroupedBackground,
-      appBar: trashCan.isEmpty ? AppBar(
-        backgroundColor: Color.fromRGBO(120, 144, 72, 1),
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: IconButton(
-                  icon: Icon(
-                    Icons.menu,
-                    size: 35,
-                    color: Colors.white, // Adjust the size as needed
-                  ),
-                  onPressed: () {
-                    _scaffoldKey.currentState!.openDrawer();
-                  },
-                ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: PopupMenuButton(
-              offset: const Offset(0, 45), // Adjust the values as needed
-              itemBuilder: (BuildContext context) {
-                return [
-                  PopupMenuItem(
-                    child: Row(
+  Future<void> _showMonthYearPicker(BuildContext context) async {
+    int tempYear = selectedYear;
+    int tempMonth = currentMonthIndex;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.all(16),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return SizedBox(
+                width: 300,
+                height: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.account_circle, size: 40, color: Color.fromRGBO(120, 144, 72, 1)),
-                        SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () => setStateDialog(() => tempYear--),
+                        ),
                         Text(
-                          FirebaseAuth.instance.currentUser!.email!,
-                          style: TextStyle(fontSize: 15),
-                          softWrap: true,
+                          "$tempYear",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () => setStateDialog(() => tempYear++),
                         ),
                       ],
                     ),
-                  ),
-                ];
-              },
-              icon: const Icon(Icons.account_circle, size: 40, color: Colors.white),
-              color: Colors.white,
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-        ],
-      ):AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Color.fromRGBO(184, 202, 148, 1),
-                actions: [Padding(
-          padding: const EdgeInsets.only(right: 1.0),
-          child: IconButton(
-            onPressed: (){
-              setState(() {
-                for(String docID in trashCan){
-                  firestoreservice.toggleLocked(docID);
-                }
-                trashCan.clear();
-              });
-            }, 
-            icon: Icon(Icons.lock_open, size: 27, color: const Color.fromARGB(255, 69, 69, 69),)),
-        ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: IconButton(
-              icon: const Icon(Icons.delete, size: 30, color: const Color.fromARGB(255, 69, 69, 69),),
-              onPressed:(){
-              
-              setState((){
-                for(String docID in trashCan){
-                  firestoreservice.deleteNote(docID);
-                }
-                trashCan.clear();
-              });
-            }),
-          )],      
-      ),
-      body: Column(
-        children:[
-          Padding(
-  padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-  child: SizedBox(
-    width: double.infinity,
-        height: 180,
-    child: GestureDetector(
-     /* onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => MemoPage(
-        memo: memo,
-        id: memoId,
-        onMemoEdited: onMemoEdited,
-        )
-      )
-    );
-                 
-      },*/
-      child: Card(
-        color: const Color.fromARGB(255, 120, 144, 72),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25.0),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(18, 8, 18, 8),
-          child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, right: 8, top: 7),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          memo.title,
-                          style: GoogleFonts.patrickHand(
-                            fontSize: 30,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold
-                          ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: GridView.builder(
+                        itemCount: months.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 2.3,
                         ),
-                      ),
-                    ),SizedBox(height: 15,),
-                    Container(
-                      padding: EdgeInsets.all( 7),
-                      width: double.infinity,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemGroupedBackground,
-                        borderRadius: BorderRadius.circular(5)
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                           memo.description,
-                          style: GoogleFonts.patrickHand(
-                            fontSize: 20,
-                            color:  Colors.black,
-                            fontWeight: FontWeight.w200
-                          ),
-                          
-                        ),
+                        itemBuilder: (context, index) {
+                          final bool selected =
+                              index == tempMonth && tempYear == selectedYear;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              setState(() {
+                                currentMonthIndex = index;
+                                selectedYear = tempYear;
+                              });
+                              _loadSummaryData();
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? const Color.fromRGBO(71, 168, 165, 1)
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                months[index].substring(0, 3),
+                                style: TextStyle(
+                                  color: selected ? Colors.white : Colors.black87,
+                                  fontWeight: selected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
-                )
-            
-          ),
-        ),
-      ),
-    ),
-  ),
-
-         /* _widgetOptions[_selectedIndex],
-          NotesList(
-            user: user,
-            firestoreservice: firestoreservice,
-            onNoteSelected: editNote,
-            trashCan: trashCan,
-            toggleTrashCan: toggleTrashCan,
-            listType: _selectedIndex,
-          ),*/
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RecordPage()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
-      drawer: trashCan.isEmpty ? Drawer(
-      backgroundColor: const Color.fromARGB(255, 120, 144, 72),
-      // Add a ListView to the drawer. This ensures the user can scroll
-      // through the options in the drawer if there isn't enough vertical
-      // space to fit everything.
-      child: ListView(         
-        // Important: Remove any padding from the ListView.
-        children: [
-          SizedBox(height: 30,),
-          SizedBox(
-            height: 90,
-            child: DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.white, // Set the background color to white
-                border: Border(
-                  bottom: Divider.createBorderSide(
-                    context,
-                    color: Colors.white,
-                    width: 2.0,
-                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Image.asset(
-                    'assets/images/matcha.png',
-                    height: 40,
-                    width: 40,
-                  ),
-                  SizedBox(
-                    width: 10,
-                  ),
-                  //Row(
-                    //children: [
-                      Text(
-                        'MATCHA-NOTE',
-                        style: TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.bold,
-                          color: const Color.fromARGB(255, 120, 144, 72),
-                        ),
-                      ),
-                      /*Text(
-                        '-',
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.white,
-                        ),
-                      ),*/
-                    //],
-                  //),
-                ],
-              ),
-            ),
-          ),           
-          ListTile(
-            leading: const Icon(
-              Icons.home,
-              color: Colors.white,
-              ),
-            title: Text(
-                'All Notes',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            selected: _selectedIndex == 0,
-            onTap: () {
-              // Update the state of the app
-              _onItemTapped(0);
-              // Then close the drawer
-              Navigator.pop(context);
+              );
             },
           ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-            leading: const Icon(
-              Icons.star,
-              color: Colors.white,
-              ),
-            title: Text(
-                'Favorites',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            selected: _selectedIndex == 1,
-            onTap: () {
-              // Update the state of the app
-              _onItemTapped(1);
-              // Then close the drawer
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-            leading: const Icon(
-              Icons.lock,
-              color: Colors.white,
-              ),
-            title: const Text('Locked Notes',
-            style: TextStyle(fontSize: 20, color: Colors.white)),
-            onTap: () {
-              showReauthenticationDialog(context);              
-            },
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          const SizedBox(
-            height: 470,
-          ),
-          const Divider(
-            color: Colors.white,
-            ),
-          ListTile(
-              leading: const Icon(
-                Icons.logout,
-                size: 25,
-                color: Colors.white,
-                ),
-              title: const Text('Log Out',
-              style: TextStyle(fontSize: 20, color: Colors.white)),
-              onTap: () {
-                // Update the state of the app
-                SignUserOut();
-                
-                // Then close the drawer
-                Navigator.pop(context);
-              },
-            ),
-        ],
-      ),
-    ):null,
-      /*floatingActionButton: _selectedIndex == 1 // Check if it's the favorites screen
-        ? null // If it's the favorites screen, set FloatingActionButton to null
-        : trashCan.isEmpty ? FloatingActionButton(
-            backgroundColor: Color.fromRGBO(120, 144, 72, 1),
-            onPressed: createNote,
-            child: const Icon(Icons.add, color: Colors.white,),
-          ):null,*/
-    );
-  }
-
-  Future<void> onNewNoteCreated() async {
-    userNotes = fetchNotes(); 
-    setState(() {  
-       
-      },
-    );
-  }
-
-  Future<void> onNoteEdited() async {
-    userNotes = fetchNotes();
-    setState(() {
-      
-    });
-  }
-
-  Future<void> onMemoEdited() async {
-    var data = await fetchMemo();
-
-    setState((){    memo = data[0];
-    memoId = data[1];});
-  }
-
-  void showReauthenticationDialog(BuildContext context) async {
-  String? password;
-  String? errorMessage;
-
-  await showDialog(
-  context: context,
-  builder: (BuildContext context) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return AlertDialog(
-          title: Text('Enter Your Account Password!'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (errorMessage != null) // Display error message if not null
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    errorMessage!,
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'Enter your password',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                onChanged: (value) => password = value,
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            /*ElevatedButton(
-              onPressed: () async {
-                try {
-                  // Sign in the user with the provided password
-                  final UserCredential userCredential =
-                      await FirebaseAuth.instance.signInWithEmailAndPassword(
-                    email: FirebaseAuth.instance.currentUser!.email!,
-                    password: password!,
-                  );
-
-                  // If reauthentication is successful, close the dialog
-                  Navigator.pop(context);
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                    builder: (context) => LockPage(),
-                  ));
-                } catch (e) {
-                  // Display an error message if reauthentication fails
-                  setState(() {
-                    errorMessage = 'Reauthentication failed: $e';
-                  });
-                }
-              },
-              child: Text('Submit'),
-            ),*/
-          ],
         );
       },
     );
-  },
-);
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      if (currentMonthIndex == 0) {
+        currentMonthIndex = 11;
+        selectedYear--;
+      } else {
+        currentMonthIndex--;
+      }
+    });
+    _loadSummaryData();
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      if (currentMonthIndex == 11) {
+        currentMonthIndex = 0;
+        selectedYear++;
+      } else {
+        currentMonthIndex++;
+      }
+    });
+    _loadSummaryData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color accent = Color.fromRGBO(71, 168, 165, 1);
+    const Color bgColor = Color(0xFFF5F7FA);
+    const Color textColor = Color(0xFF333333);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+  "${_getGreeting()}, ${userName.isNotEmpty ? userName : 'User'}!",
+  style: const TextStyle(
+    fontSize: 26,
+    fontWeight: FontWeight.bold,
+    color: textColor,
+  ),
+),
+
+                    const SizedBox(height: 4),
+                    Text(
+                      "Here's your financial summary",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Month Selector
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 28),
+                          color: accent,
+                          onPressed: _goToPreviousMonth,
+                        ),
+                        GestureDetector(
+                          onTap: () => _showMonthYearPicker(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: accent,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: accent.withOpacity(0.3),
+                                  blurRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  "${months[currentMonthIndex]} $selectedYear",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_drop_down,
+                                    color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 28),
+                          color: accent,
+                          onPressed: _goToNextMonth,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Summary Cards
+                    LayoutBuilder(builder: (context, constraints) {
+                      final bool isWide = constraints.maxWidth > 600;
+                      final netSavings = totalIncome - totalSpending;
+
+                      final spendingText =
+                          "฿${totalSpending.toStringAsFixed(2)}";
+                      final incomeText = "฿${totalIncome.toStringAsFixed(2)}";
+                      final savingsText =
+                          "฿${netSavings.toStringAsFixed(2)}";
+
+                      if (isWide) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _summaryCard(
+                                title: "Total Spending",
+                                amount: spendingText,
+                                icon: Icons.arrow_downward,
+                                color: Colors.redAccent,
+                                width: double.infinity,
+                                height: 130,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _summaryCard(
+                                title: "Total Income",
+                                amount: incomeText,
+                                icon: Icons.arrow_upward,
+                                color: Colors.green,
+                                width: double.infinity,
+                                height: 130,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _summaryCard(
+                                title: "Net Savings",
+                                amount: savingsText,
+                                icon: Icons.account_balance_wallet,
+                                color: accent,
+                                width: double.infinity,
+                                height: 130,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            _summaryCard(
+                              title: "Total Spending",
+                              amount: spendingText,
+                              icon: Icons.arrow_downward,
+                              color: Colors.redAccent,
+                              width: double.infinity,
+                              height: 130,
+                            ),
+                            const SizedBox(height: 12),
+                            _summaryCard(
+                              title: "Total Income",
+                              amount: incomeText,
+                              icon: Icons.arrow_upward,
+                              color: Colors.green,
+                              width: double.infinity,
+                              height: 130,
+                            ),
+                            const SizedBox(height: 12),
+                            _summaryCard(
+                              title: "Net Savings",
+                              amount: savingsText,
+                              icon: Icons.account_balance_wallet,
+                              color: accent,
+                              width: double.infinity,
+                              height: 130,
+                            ),
+                          ],
+                        );
+                      }
+                    }),
+                    const SizedBox(height: 24),
+
+                    // Charts Section
+                    LayoutBuilder(builder: (context, constraints) {
+                      final bool isWide = constraints.maxWidth > 600;
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _donutChartCard(categoryData)),
+                            const SizedBox(width: 16),
+                            Expanded(child: _barChartCard(accent)),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            _donutChartCard(categoryData),
+                            const SizedBox(height: 16),
+                            _barChartCard(accent),
+                          ],
+                        );
+                      }
+                    }),
+                    const SizedBox(height: 24),
+
+                    // Recent Transactions
+                    const Text(
+                      "Recent Transactions",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    StreamBuilder(
+                      stream: firestoreService.getRecentTransactionsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Text(
+                            "No transactions yet",
+                            style:
+                                TextStyle(color: Colors.grey, fontSize: 16),
+                          );
+                        }
+                        final transactions = snapshot.data!;
+                        return Column(
+                          children: transactions.map<Widget>((tx) {
+                            final isExpense = tx['amount'] < 0;
+                            return _transactionTile(
+                              tx['category'] ?? "Unknown",
+                              tx['note'] ?? "",
+                              "${isExpense ? '' : '+'}${tx['amount']} ฿",
+                              isExpense
+                                  ? Icons.arrow_downward
+                                  : Icons.arrow_upward,
+                              isExpense
+                                  ? Colors.redAccent
+                                  : Colors.green,
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: accent,
+        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RecordPage()),
+          ).then((_) => _loadSummaryData());
+        },
+      ),
+    );
+  }
+
+  // Widgets
+
+  Widget _summaryCard({
+    required String title,
+    required String amount,
+    required IconData icon,
+    required Color color,
+    required double width,
+    required double height,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          const Spacer(),
+          Text(amount,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _donutChartCard(Map<String, double> categoryData) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white, // same as summary cards
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: const [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 4,
+          offset: Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Spending Breakdown",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: categoryData.isEmpty
+              ? const Center(
+                  child: Text(
+                    "No data yet",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
+              : PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    borderData: FlBorderData(show: false),
+                    sections: categoryData.entries.map((entry) {
+                      return PieChartSectionData(
+                        color: Colors.primaries[
+                            categoryData.keys.toList().indexOf(entry.key) %
+                                Colors.primaries.length],
+                        value: entry.value,
+                        title: entry.key,
+                        titleStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        radius: 40,
+                      );
+                    }).toList(),
+                  ),
+                ),
+        ),
+      ],
+    ),
+  );
 }
+
+
+  Widget _barChartCard(Color accent) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white, // same as summary cards
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: const [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 4,
+          offset: Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Spending Trend",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: const Center(
+            child: Text(
+              "No data yet",
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+  Widget _transactionTile(String title, String subtitle, String amount,
+      IconData icon, Color iconColor) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: iconColor.withOpacity(0.15),
+            child: Icon(icon, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(subtitle,
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 14)),
+              ],
+            ),
+          ),
+          Text(amount,
+              style: TextStyle(
+                color:
+                    amount.startsWith('-') ? Colors.redAccent : Colors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              )),
+        ],
+      ),
+    );
+  }
 }
