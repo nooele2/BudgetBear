@@ -138,4 +138,76 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+
+  //save monthly budget
+  Future<void> setMonthlyBudget(int year, int month, double amount) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('budgets')
+        .doc('$year-$month')
+        .set({
+      'year': year,
+      'month': month,
+      'budget': amount,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  //get monthly budget
+  Future<double> getMonthlyBudget(int year, int month) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return 0.0;
+
+    final doc = await _db
+        .collection('users')
+        .doc(uid)
+        .collection('budgets')
+        .doc('$year-$month')
+        .get();
+
+    if (doc.exists) {
+      return (doc.data()?['budget'] ?? 0.0).toDouble();
+    }
+    return 0.0;
+  }
+
+  //get monthly expenses
+  Future<Map<int, double>> getMonthlyExpenses(int year) async {
+    try {
+      final startOfYear = DateTime(year, 1, 1);
+      final startOfNextYear = DateTime(year + 1, 1, 1);
+
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYear))
+          .where('date', isLessThan: Timestamp.fromDate(startOfNextYear))
+          .get();
+
+      Map<int, double> monthlyTotals = {};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final date = (data['date'] as Timestamp).toDate();
+        final amount = (data['amount'] ?? 0.0).toDouble();
+        final type = (data['type'] ?? '').toString().toLowerCase();
+
+        // only count expenses
+        if (type == 'expense') {
+          final month = date.month;
+          monthlyTotals[month] = (monthlyTotals[month] ?? 0.0) + amount;
+        }
+      }
+
+      return monthlyTotals;
+    } catch (e) {
+      print('Error getting monthly expenses: $e');
+      return {};
+    }
+  }
 }
