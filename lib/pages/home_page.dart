@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
+import 'package:budget_bear/pages/all_transactions_page.dart';
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -505,13 +506,34 @@ const SizedBox(height: 24),
               const SizedBox(height: 24),
 
               // Recent Transactions
-              const Text(
-                "Recent Transactions",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Recent Transactions",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // TODO: Navigate to all transactions page
+                      Navigator.push(
+                       context,
+                       MaterialPageRoute(builder: (context) => const AllTransactionsPage()),
+                     );
+                    },
+                    child: const Text(
+                      "See More",
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               StreamBuilder(

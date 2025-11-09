@@ -94,7 +94,7 @@ class FirestoreService {
     }
   }
 
-  /// Stream of recent transactions (latest 10)
+  /// Stream of recent transactions (latest 5)
   Stream<List<Map<String, dynamic>>> getRecentTransactionsStream() {
     final user = _auth.currentUser;
     if (user == null) return const Stream.empty();
@@ -104,7 +104,7 @@ class FirestoreService {
         .doc(user.uid)
         .collection('transactions')
         .orderBy('date', descending: true)
-        .limit(10)
+        .limit(5)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
               final data = doc.data();
