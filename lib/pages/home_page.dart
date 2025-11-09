@@ -554,17 +554,17 @@ const SizedBox(height: 24),
                   final transactions = snapshot.data!;
                   return Column(
                     children: transactions.map<Widget>((tx) {
-                      final isExpense = tx['amount'] < 0;
+                      
+                      final type = (tx['type'] ?? '').toString().toLowerCase();
+                      final isExpense = type == 'expense';
+                      final amount = (tx['amount'] ?? 0.0).toDouble();
+
                       return _transactionTile(
                         tx['category'] ?? "Unknown",
-                        tx['note'] ?? "",
-                        "${isExpense ? '' : '+'}${tx['amount']} ฿",
-                        isExpense
-                            ? Icons.arrow_downward
-                            : Icons.arrow_upward,
-                        isExpense
-                            ? Colors.redAccent
-                            : Colors.green,
+                        tx['title'] ?? tx['note'] ?? "",
+                        "${isExpense ? '-' : '+'}${amount.toStringAsFixed(2)} ฿",
+                        isExpense ? Icons.arrow_downward : Icons.arrow_upward, 
+                        isExpense ? Colors.redAccent : Colors.green, 
                       );
                     }).toList(),
                   );
