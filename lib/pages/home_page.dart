@@ -224,6 +224,58 @@ Future<void> _loadUserName() async {
     _loadSummaryData();
   }
 
+  Future<void> _showBudgetEditDialog(BuildContext context) async {
+  final TextEditingController controller =
+      TextEditingController(text: monthlyBudget > 0 ? monthlyBudget.toString() : '');
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Edit Monthly Budget"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: "Enter new budget (฿)",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newBudget = double.tryParse(controller.text) ?? 0.0;
+              await firestoreService.setMonthlyBudget(
+                selectedYear,
+                currentMonthIndex + 1,
+                newBudget,
+              );
+              setState(() {
+                monthlyBudget = newBudget;
+              });
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color.fromRGBO(71, 168, 165, 1),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text("Save"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
@@ -322,76 +374,108 @@ const SizedBox(height: 24),
 
       // Budget Section
       Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF47A8A5), Color.fromARGB(255, 143, 96, 225)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+            BoxShadow(
+              color: Color(0x407C3AED),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Monthly Budget",
+              "My Budget",
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF333333),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white70,
               ),
             ),
             const SizedBox(height: 8),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _budgetController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: "Enter your budget (฿)",
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        monthlyBudget = double.tryParse(value) ?? 0.0;
-                      });
-                    },
+                Text(
+                  monthlyBudget > 0
+                      ? "฿${monthlyBudget.toStringAsFixed(0)}"
+                      : "฿0",
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    await firestoreService.setMonthlyBudget(
-                      selectedYear,
-                      currentMonthIndex + 1,
-                      monthlyBudget,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Budget saved: ฿${monthlyBudget.toStringAsFixed(2)}')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: Colors.white,
+                GestureDetector(
+                  onTap: () => _showBudgetEditDialog(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  child: const Text("Save"),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            if (monthlyBudget > 0)
-              Text(
-                "Remaining budget: ฿${(monthlyBudget - totalSpending).toStringAsFixed(2)}",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: (monthlyBudget - totalSpending) >= 0
-                      ? Colors.green
-                      : Colors.redAccent,
-                  fontWeight: FontWeight.w600,
+            Text(
+              monthlyBudget > 0
+                  ? "Let’s make every baht count!"
+                  : "Set your monthly budget",
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+            if (monthlyBudget > 0) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Remaining",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Text(
+                      "฿${(monthlyBudget - totalSpending).toStringAsFixed(2)}",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: (monthlyBudget - totalSpending) >= 0
+                            ? Colors.white
+                            : Colors.red.shade200,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ],
           ],
         ),
       ),
