@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:budget_bear/services/firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
-import 'package:budget_bear/pages/all_transactions_page.dart';
+import 'package:budget_bear/pages/detail_page.dart';
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 
 class HomePage extends StatefulWidget {
@@ -519,10 +519,10 @@ const SizedBox(height: 24),
                   ),
                   TextButton(
                     onPressed: () {
-                      // TODO: Navigate to all transactions page
+                      // TODO: Navigate to detail page
                       Navigator.push(
                        context,
-                       MaterialPageRoute(builder: (context) => const AllTransactionsPage()),
+                       MaterialPageRoute(builder: (context) => const DetailPage()),
                      );
                     },
                     child: const Text(
