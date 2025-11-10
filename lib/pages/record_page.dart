@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:budget_bear/auth/auth_page.dart';
-import 'package:budget_bear/auth/auth_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:budget_bear/firebase_options.dart';
 import 'package:budget_bear/pages/home_page.dart';
@@ -21,16 +20,29 @@ class _RecordPageState extends State<RecordPage> {
   String? _selectedCategory;
   int? _spentAmount;
   String? _notes;
-  String _transactionType = 'income';
+  String _transactionType = 'expense';
 
-  final List<Map<String, dynamic>> _categories = [
+  final List<Map<String, dynamic>> _expenseCategories = [
     {'icon': Icons.restaurant, 'label': 'Food'},
     {'icon': Icons.directions_car, 'label': 'Transport'},
     {'icon': Icons.lightbulb, 'label': 'Utilities'},
     {'icon': Icons.movie, 'label': 'Entertainment'},
-    {'icon': Icons.savings, 'label': 'Savings'},
+    {'icon': Icons.shopping_cart, 'label': 'Shopping'},
     {'icon': Icons.more_horiz, 'label': 'Other'},
   ];
+
+  final List<Map<String, dynamic>> _incomeCategories = [
+    {'icon': Icons.work, 'label': 'Salary'},
+    {'icon': Icons.card_giftcard, 'label': 'Gift'},
+    {'icon': Icons.attach_money, 'label': 'Investment'},
+    {'icon': Icons.savings, 'label': 'Savings'},
+    {'icon': Icons.account_balance, 'label': 'Interest'},
+    {'icon': Icons.more_horiz, 'label': 'Other'},
+  ];
+
+  List<Map<String, dynamic>> get _currentCategories {
+    return _transactionType == 'expense' ? _expenseCategories : _incomeCategories;
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -94,7 +106,8 @@ class _RecordPageState extends State<RecordPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              //toggle for income and expense
+
+              //toggle for Income/Expense
               Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -107,6 +120,7 @@ class _RecordPageState extends State<RecordPage> {
                     onPressed: (index) {
                       setState(() {
                         _transactionType = index == 0 ? 'expense' : 'income';
+                        _selectedCategory = null; // clear selection if switched
                       });
                     },
                     borderRadius: BorderRadius.circular(12),
@@ -151,13 +165,16 @@ class _RecordPageState extends State<RecordPage> {
               ),
               const SizedBox(height: 24),
 
-              //catagory section
-              const Text('Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+              //category section
+              const Text(
+              'Category',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor),
+              ),
               const SizedBox(height: 8),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _categories.length,
+                itemCount: _currentCategories.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 12,
@@ -165,7 +182,7 @@ class _RecordPageState extends State<RecordPage> {
                   childAspectRatio: 1.2,
                 ),
                 itemBuilder: (context, index) {
-                  final category = _categories[index];
+                  final category = _currentCategories[index];
                   final isSelected = _selectedCategory == category['label'];
                   return GestureDetector(
                     onTap: () => setState(() => _selectedCategory = category['label']),
