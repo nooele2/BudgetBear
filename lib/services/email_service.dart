@@ -12,11 +12,6 @@ class EmailService {
   /// Validates email configuration
   static bool isConfigured() {
     final configured = _sendGridApiKey.isNotEmpty && _senderEmail.isNotEmpty;
-    if (!configured) {
-      print('⚠️ Email not configured:');
-      print('  - API Key: ${_sendGridApiKey.isEmpty ? "MISSING" : "SET (${_sendGridApiKey.length} chars)"}');
-      print('  - Sender Email: ${_senderEmail.isEmpty ? "MISSING" : _senderEmail}');
-    }
     return configured;
   }
 
