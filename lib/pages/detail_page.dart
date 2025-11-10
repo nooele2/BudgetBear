@@ -11,11 +11,31 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   final FirestoreService firestoreService = FirestoreService();
-  
+
+  //expense categories
+  final List<String> expenseCategories = [
+    'Food',
+    'Transport',
+    'Utilities',
+    'Entertainment',
+    'Shopping',
+    'Other',
+  ];
+
+  //income categories
+  final List<String> incomeCategories = [
+    'Salary',
+    'Gift',
+    'Investment',
+    'Savings',
+    'Interest',
+    'Other',
+  ];
+
   DateTime selectedDate = DateTime.now();
   String? selectedCategory;
-  String? selectedType; //expense and or income
-  
+  String? selectedType;
+
   List<Map<String, dynamic>> allTransactions = [];
   List<Map<String, dynamic>> filteredTransactions = [];
   bool isLoading = true;
@@ -28,12 +48,12 @@ class _DetailPageState extends State<DetailPage> {
 
   Future<void> _loadTransactions() async {
     setState(() => isLoading = true);
-    
+
     final transactions = await firestoreService.getTransactions(
       selectedDate.year,
       selectedDate.month,
     );
-    
+
     setState(() {
       allTransactions = transactions;
       _applyFilters();
@@ -47,19 +67,17 @@ class _DetailPageState extends State<DetailPage> {
       final isSameDay = txDate.year == selectedDate.year &&
           txDate.month == selectedDate.month &&
           txDate.day == selectedDate.day;
-      
+
       if (!isSameDay) return false;
-      
-      //by category
+
       if (selectedCategory != null && tx['category'] != selectedCategory) {
         return false;
       }
-      
-      //by type
+
       if (selectedType != null && tx['type'] != selectedType) {
         return false;
       }
-      
+
       return true;
     }).toList();
   }
@@ -77,76 +95,98 @@ class _DetailPageState extends State<DetailPage> {
       builder: (context) {
         String? tempCategory = selectedCategory;
         String? tempType = selectedType;
-        
+
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            List<String> categoryList;
+            if (tempType == 'expense') {
+              categoryList = [...expenseCategories];
+            } else if (tempType == 'income') {
+              categoryList = [...incomeCategories];
+            } else {
+              categoryList = {
+                ...expenseCategories,
+                ...incomeCategories,
+              }.toList();
+            }
+
             return AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               title: const Text('Filter Transactions'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Transaction Type',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      FilterChip(
-                        label: const Text('All'),
-                        selected: tempType == null,
-                        onSelected: (selected) {
-                          setDialogState(() => tempType = null);
-                        },
-                      ),
-                      FilterChip(
-                        label: const Text('Expense'),
-                        selected: tempType == 'expense',
-                        onSelected: (selected) {
-                          setDialogState(() => tempType = selected ? 'expense' : null);
-                        },
-                      ),
-                      FilterChip(
-                        label: const Text('Income'),
-                        selected: tempType == 'income',
-                        onSelected: (selected) {
-                          setDialogState(() => tempType = selected ? 'income' : null);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Category',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      FilterChip(
-                        label: const Text('All'),
-                        selected: tempCategory == null,
-                        onSelected: (selected) {
-                          setDialogState(() => tempCategory = null);
-                        },
-                      ),
-                      ...['Food', 'Transport', 'Utilities', 'Entertainment', 'Shopping', 'Salary', 'Gift', 'Investment', 'Other']
-                          .map((cat) => FilterChip(
-                                label: Text(cat),
-                                selected: tempCategory == cat,
-                                onSelected: (selected) {
-                                  setDialogState(() => tempCategory = selected ? cat : null);
-                                },
-                              )),
-                    ],
-                  ),
-                ],
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Transaction Type',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        FilterChip(
+                          label: const Text('All'),
+                          selected: tempType == null,
+                          onSelected: (_) {
+                            setDialogState(() => tempType = null);
+                          },
+                        ),
+                        FilterChip(
+                          label: const Text('Expense'),
+                          selected: tempType == 'expense',
+                          onSelected: (selected) {
+                            setDialogState(
+                                () => tempType = selected ? 'expense' : null);
+                          },
+                        ),
+                        FilterChip(
+                          label: const Text('Income'),
+                          selected: tempType == 'income',
+                          onSelected: (selected) {
+                            setDialogState(
+                                () => tempType = selected ? 'income' : null);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Category',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+
+                    //dynamic category
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        FilterChip(
+                          label: const Text('All'),
+                          selected: tempCategory == null,
+                          onSelected: (_) {
+                            setDialogState(() => tempCategory = null);
+                          },
+                        ),
+                        ...categoryList.map(
+                          (cat) => FilterChip(
+                            label: Text(cat),
+                            selected: tempCategory == cat,
+                            onSelected: (selected) {
+                              setDialogState(
+                                () => tempCategory = selected ? cat : null,
+                              );
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -228,6 +268,7 @@ class _DetailPageState extends State<DetailPage> {
           ),
         ],
       ),
+
       body: Column(
         children: [
           //date selector
