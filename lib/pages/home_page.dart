@@ -36,29 +36,29 @@ class _HomePageState extends State<HomePage> {
   String userName = '';
 
   @override
-void initState() {
-  super.initState();
-  _loadUserName();
-  _loadSummaryData();
-}
+  void initState() {
+    super.initState();
+    _loadUserName();
+    _loadSummaryData();
+  }
 
-Future<void> _loadUserName() async {
-  final name = await firestoreService.getUserName();
-  setState(() {
-    userName = name ?? "User";
-  });
-}
+  Future<void> _loadUserName() async {
+    final name = await firestoreService.getUserName();
+    setState(() {
+      userName = name ?? "User";
+    });
+  }
 
   String _getGreeting() {
-  final hour = DateTime.now().hour;
-  if (hour < 12) {
-    return "Good Morning";
-  } else if (hour < 17) {
-    return "Good Afternoon";
-  } else {
-    return "Good Evening";
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 17) {
+      return "Good Afternoon";
+    } else {
+      return "Good Evening";
+    }
   }
-}
 
   Future<void> _loadSummaryData() async {
     setState(() => isLoading = true);
@@ -109,12 +109,14 @@ Future<void> _loadUserName() async {
   }
 
   Future<void> _showMonthYearPicker(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     int tempYear = selectedYear;
     int tempMonth = currentMonthIndex;
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           contentPadding: const EdgeInsets.all(16),
           content: StatefulBuilder(
@@ -129,18 +131,21 @@ Future<void> _loadUserName() async {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.chevron_left),
+                          icon: Icon(Icons.chevron_left, 
+                            color: isDark ? Colors.white : Colors.black),
                           onPressed: () => setStateDialog(() => tempYear--),
                         ),
                         Text(
                           "$tempYear",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_right),
+                          icon: Icon(Icons.chevron_right,
+                            color: isDark ? Colors.white : Colors.black),
                           onPressed: () => setStateDialog(() => tempYear++),
                         ),
                       ],
@@ -173,13 +178,13 @@ Future<void> _loadUserName() async {
                               decoration: BoxDecoration(
                                 color: selected
                                     ? const Color.fromRGBO(71, 168, 165, 1)
-                                    : Colors.grey.shade200,
+                                    : (isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade200),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 months[index].substring(0, 3),
                                 style: TextStyle(
-                                  color: selected ? Colors.white : Colors.black87,
+                                  color: selected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                                   fontWeight: selected
                                       ? FontWeight.bold
                                       : FontWeight.w500,
@@ -226,9 +231,12 @@ Future<void> _loadUserName() async {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
-    const Color bgColor = Color(0xFFF5F7FA);
-    const Color textColor = Color(0xFF333333);
+    final Color bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final Color cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF333333);
+    final Color subtitleColor = isDark ? Colors.white60 : Colors.grey;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -588,16 +596,22 @@ const SizedBox(height: 24),
     required Color color,
     required double width,
     required double height,
+    required Color cardColor,
+    required Color textColor,
   }) {
     return Container(
       width: width,
       height: height,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
         ],
       ),
       child: Column(
@@ -605,79 +619,79 @@ const SizedBox(height: 24),
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey)),
           const Spacer(),
           Text(amount,
-              style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
         ],
       ),
     );
   }
 
-  Widget _donutChartCard(Map<String, double> categoryData) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white, // same as summary cards
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: const [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 4,
-          offset: Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Spending Breakdown",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
+  Widget _donutChartCard(Map<String, double> categoryData, Color cardColor, Color textColor) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: categoryData.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No data yet",
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Spending Breakdown",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: categoryData.isEmpty
+                ? const Center(
+                    child: Text(
+                      "No data yet",
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                      borderData: FlBorderData(show: false),
+                      sections: categoryData.entries.map((entry) {
+                        return PieChartSectionData(
+                          color: Colors.primaries[
+                              categoryData.keys.toList().indexOf(entry.key) %
+                                  Colors.primaries.length],
+                          value: entry.value,
+                          title: entry.key,
+                          titleStyle: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: textColor,
+                          ),
+                          radius: 40,
+                        );
+                      }).toList(),
+                    ),
                   ),
-                )
-              : PieChart(
-                  PieChartData(
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    borderData: FlBorderData(show: false),
-                    sections: categoryData.entries.map((entry) {
-                      return PieChartSectionData(
-                        color: Colors.primaries[
-                            categoryData.keys.toList().indexOf(entry.key) %
-                                Colors.primaries.length],
-                        value: entry.value,
-                        title: entry.key,
-                        titleStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                        radius: 40,
-                      );
-                    }).toList(),
-                  ),
-                ),
-        ),
-      ],
-    ),
-  );
-}
+          ),
+        ],
+      ),
+    );
+  }
 
   //barchart card
   Widget _barChartCard(List<double> monthlyExpenses) {
@@ -771,16 +785,28 @@ const SizedBox(height: 24),
     );
   }
 
-
-  Widget _transactionTile(String title, String subtitle, String amount,
-      IconData icon, Color iconColor) {
+  Widget _transactionTile(
+    String title,
+    String subtitle,
+    String amount,
+    IconData icon,
+    Color iconColor,
+    Color cardColor,
+    Color textColor,
+    Color subtitleColor,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+          )
+        ],
       ),
       child: Row(
         children: [
@@ -795,11 +821,12 @@ const SizedBox(height: 24),
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(subtitle,
                     style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 14)),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: textColor)),
+                Text(subtitle,
+                    style: TextStyle(color: subtitleColor, fontSize: 14)),
               ],
             ),
           ),
