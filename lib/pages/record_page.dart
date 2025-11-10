@@ -33,56 +33,77 @@ class _RecordPageState extends State<RecordPage> {
   ];
 
   Future<void> _pickDate() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color.fromRGBO(71, 168, 165, 1),
+                    surface: Color(0xFF1E1E1E),
+                  )
+                : const ColorScheme.light(
+                    primary: Color.fromRGBO(71, 168, 165, 1),
+                  ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
     }
   }
 
-  InputDecoration _inputDecoration(String hintText, {Widget? prefixIcon}) {
+  InputDecoration _inputDecoration(String hintText, {Widget? prefixIcon, required bool isDark}) {
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
+    final Color fillColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final Color borderColor = isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade300;
+    final Color hintColor = isDark ? Colors.grey.shade500 : Colors.grey;
 
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(color: Colors.grey),
+      hintStyle: TextStyle(color: hintColor),
       prefixIcon: prefixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: accent, width: 1.5),
+        borderSide: const BorderSide(color: accent, width: 1.5),
       ),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: fillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
-    const Color bgColor = Color(0xFFF5F7FA);
-    const Color textColor = Color(0xFF333333);
+    final Color bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final Color cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF333333);
+    final Color borderColor = isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade300;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        leading: const BackButton(color: textColor),
-        title: const Text(
+        leading: BackButton(color: textColor),
+        title: Text(
           'Record Transaction',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
         ),
@@ -112,7 +133,9 @@ class _RecordPageState extends State<RecordPage> {
                     borderRadius: BorderRadius.circular(12),
                     selectedColor: Colors.white,
                     fillColor: accent,
-                    color: Colors.grey[700],
+                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    borderColor: borderColor,
+                    selectedBorderColor: accent,
                     constraints: const BoxConstraints(minHeight: 48, minWidth: 170),
                     children: const [
                       Text('Expense', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -124,16 +147,16 @@ class _RecordPageState extends State<RecordPage> {
               const SizedBox(height: 24),
 
               //date section
-              const Text('Date', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+              Text('Date', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -142,17 +165,17 @@ class _RecordPageState extends State<RecordPage> {
                         _selectedDate == null
                             ? 'Select Date'
                             : DateFormat('dd MMM yyyy').format(_selectedDate!),
-                        style: const TextStyle(fontSize: 16, color: textColor),
+                        style: TextStyle(fontSize: 16, color: textColor),
                       ),
-                      const Icon(Icons.calendar_today, color: Colors.grey),
+                      Icon(Icons.calendar_today, color: isDark ? Colors.grey[400] : Colors.grey),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              //catagory section
-              const Text('Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+              //category section
+              Text('Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
               const SizedBox(height: 8),
               GridView.builder(
                 shrinkWrap: true,
@@ -171,17 +194,23 @@ class _RecordPageState extends State<RecordPage> {
                     onTap: () => setState(() => _selectedCategory = category['label']),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isSelected ? accent.withOpacity(0.15) : Colors.white,
+                        color: isSelected ? accent.withOpacity(0.15) : cardColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSelected ? accent : Colors.grey.shade300,
+                          color: isSelected ? accent : borderColor,
                           width: 1.5,
                         ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(category['icon'], color: isSelected ? accent : Colors.grey[600], size: 26),
+                          Icon(
+                            category['icon'],
+                            color: isSelected
+                                ? accent
+                                : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                            size: 26,
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             category['label'],
@@ -199,21 +228,27 @@ class _RecordPageState extends State<RecordPage> {
               const SizedBox(height: 24),
 
               //add amount section
-              const Text('Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+              Text('Amount', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
               const SizedBox(height: 8),
               TextField(
                 keyboardType: TextInputType.number,
-                decoration: _inputDecoration('0.00', prefixIcon: const Icon(Icons.attach_money)),
+                style: TextStyle(color: textColor),
+                decoration: _inputDecoration(
+                  '0.00',
+                  prefixIcon: Icon(Icons.attach_money, color: isDark ? Colors.grey[400] : Colors.grey),
+                  isDark: isDark,
+                ),
                 onChanged: (value) => setState(() => _spentAmount = int.tryParse(value)),
               ),
               const SizedBox(height: 24),
 
               //add note section
-              const Text('Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
+              Text('Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textColor)),
               const SizedBox(height: 8),
               TextField(
                 maxLines: 3,
-                decoration: _inputDecoration('Add notes (optional)'),
+                style: TextStyle(color: textColor),
+                decoration: _inputDecoration('Add notes (optional)', isDark: isDark),
                 onChanged: (value) => setState(() => _notes = value),
               ),
               const SizedBox(height: 100),
@@ -291,7 +326,7 @@ class _RecordPageState extends State<RecordPage> {
               ),
             ),
           ),
-          const BottomNavBar(currentIndex: 2), 
+          const BottomNavBar(currentIndex: 2),
         ],
       ),
       //end of button and nav bar
