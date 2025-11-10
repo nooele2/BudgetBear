@@ -210,4 +210,41 @@ class FirestoreService {
       return {};
     }
   }
+
+// Save AI message
+Future<void> saveAIMessage(String role, String text) async {
+  final uid = _auth.currentUser?.uid;
+  if (uid == null) return;
+
+  await _db
+      .collection("users")
+      .doc(uid)
+      .collection("ai_chat")
+      .add({
+    "role": role,
+    "text": text,
+    "timestamp": FieldValue.serverTimestamp(),
+  });
+}
+
+// Get AI chat history
+  Future<List<Map<String, String>>> getAIChatHistory() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return [];
+
+    final query = await _db
+        .collection("users")
+        .doc(uid)
+        .collection("ai_chat")
+        .orderBy("timestamp", descending: false)
+        .get();
+
+    return query.docs.map((doc) {
+      final data = doc.data();
+      return {
+        "role": data["role"]?.toString() ?? "",
+        "text": data["text"]?.toString() ?? "",
+      };
+    }).toList();
+  }
 }

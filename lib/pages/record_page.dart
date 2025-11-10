@@ -93,7 +93,6 @@ class _RecordPageState extends State<RecordPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        leading: const BackButton(color: textColor),
         title: const Text(
           'Record Transaction',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
