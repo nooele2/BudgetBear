@@ -90,6 +90,9 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   void _showFilterDialog() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -111,18 +114,25 @@ class _DetailPageState extends State<DetailPage> {
             }
 
             return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Text('Filter Transactions'),
+              title: Text(
+                'Filter Transactions',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Transaction Type',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -134,6 +144,8 @@ class _DetailPageState extends State<DetailPage> {
                           onSelected: (_) {
                             setDialogState(() => tempType = null);
                           },
+                          backgroundColor: isDark ? Colors.grey.shade800 : null,
+                          selectedColor: const Color.fromRGBO(71, 168, 165, 1),
                         ),
                         FilterChip(
                           label: const Text('Expense'),
@@ -142,6 +154,8 @@ class _DetailPageState extends State<DetailPage> {
                             setDialogState(
                                 () => tempType = selected ? 'expense' : null);
                           },
+                          backgroundColor: isDark ? Colors.grey.shade800 : null,
+                          selectedColor: const Color.fromRGBO(71, 168, 165, 1),
                         ),
                         FilterChip(
                           label: const Text('Income'),
@@ -150,14 +164,19 @@ class _DetailPageState extends State<DetailPage> {
                             setDialogState(
                                 () => tempType = selected ? 'income' : null);
                           },
+                          backgroundColor: isDark ? Colors.grey.shade800 : null,
+                          selectedColor: const Color.fromRGBO(71, 168, 165, 1),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Category',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 8),
 
@@ -171,6 +190,8 @@ class _DetailPageState extends State<DetailPage> {
                           onSelected: (_) {
                             setDialogState(() => tempCategory = null);
                           },
+                          backgroundColor: isDark ? Colors.grey.shade800 : null,
+                          selectedColor: const Color.fromRGBO(71, 168, 165, 1),
                         ),
                         ...categoryList.map(
                           (cat) => FilterChip(
@@ -181,6 +202,8 @@ class _DetailPageState extends State<DetailPage> {
                                 () => tempCategory = selected ? cat : null,
                               );
                             },
+                            backgroundColor: isDark ? Colors.grey.shade800 : null,
+                            selectedColor: const Color.fromRGBO(71, 168, 165, 1),
                           ),
                         )
                       ],
@@ -193,7 +216,10 @@ class _DetailPageState extends State<DetailPage> {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: const Text('Cancel'),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -221,8 +247,12 @@ class _DetailPageState extends State<DetailPage> {
   @override
   Widget build(BuildContext context) {
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
-    const Color bgColor = Color(0xFFF5F7FA);
-    const Color textColor = Color(0xFF333333);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF333333);
+    final subtextColor = isDark ? Colors.white70 : Colors.grey.shade600;
 
     final dayTotal = filteredTransactions.fold<double>(
       0.0,
@@ -238,8 +268,8 @@ class _DetailPageState extends State<DetailPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        leading: const BackButton(color: textColor),
-        title: const Text(
+        leading: BackButton(color: textColor),
+        title: Text(
           'Transaction Details',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
         ),
@@ -248,7 +278,7 @@ class _DetailPageState extends State<DetailPage> {
           IconButton(
             icon: Stack(
               children: [
-                const Icon(Icons.filter_list, color: textColor),
+                Icon(Icons.filter_list, color: textColor),
                 if (selectedCategory != null || selectedType != null)
                   Positioned(
                     right: 0,
@@ -274,7 +304,7 @@ class _DetailPageState extends State<DetailPage> {
           //date selector
           Container(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            color: Colors.white,
+            color: cardColor,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -300,7 +330,9 @@ class _DetailPageState extends State<DetailPage> {
                         horizontal: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: isSelected ? accent : Colors.grey.shade200,
+                        color: isSelected 
+                            ? accent 
+                            : isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -309,7 +341,9 @@ class _DetailPageState extends State<DetailPage> {
                             DateFormat('EEE').format(date),
                             style: TextStyle(
                               fontSize: 12,
-                              color: isSelected ? Colors.white : Colors.grey.shade700,
+                              color: isSelected 
+                                  ? Colors.white 
+                                  : isDark ? Colors.white70 : Colors.grey.shade700,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                             ),
                           ),
@@ -340,12 +374,12 @@ class _DetailPageState extends State<DetailPage> {
           if (selectedCategory != null || selectedType != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.white,
+              color: cardColor,
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     'Filters: ',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(fontSize: 14, color: subtextColor),
                   ),
                   if (selectedType != null)
                     Padding(
@@ -383,15 +417,17 @@ class _DetailPageState extends State<DetailPage> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              boxShadow: isDark
+                  ? []
+                  : [
+                      const BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -401,7 +437,7 @@ class _DetailPageState extends State<DetailPage> {
                   children: [
                     Text(
                       DateFormat('MMMM d, yyyy').format(selectedDate),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: textColor,
@@ -412,7 +448,7 @@ class _DetailPageState extends State<DetailPage> {
                       '${filteredTransactions.length} transaction${filteredTransactions.length != 1 ? 's' : ''}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade600,
+                        color: subtextColor,
                       ),
                     ),
                   ],
@@ -420,11 +456,11 @@ class _DetailPageState extends State<DetailPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
+                    Text(
                       'Day Total',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey,
+                        color: subtextColor,
                       ),
                     ),
                     Text(
@@ -453,14 +489,14 @@ class _DetailPageState extends State<DetailPage> {
                             Icon(
                               Icons.receipt_long_outlined,
                               size: 64,
-                              color: Colors.grey.shade400,
+                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'No transactions for this day',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey.shade600,
+                                color: subtextColor,
                               ),
                             ),
                           ],
@@ -484,15 +520,17 @@ class _DetailPageState extends State<DetailPage> {
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                              boxShadow: isDark
+                                  ? []
+                                  : [
+                                      const BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
                             ),
                             child: Row(
                               children: [
@@ -517,23 +555,24 @@ class _DetailPageState extends State<DetailPage> {
                                     children: [
                                       Text(
                                         category,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
+                                          color: textColor,
                                         ),
                                       ),
                                       if (title.isNotEmpty)
                                         Text(
                                           title,
                                           style: TextStyle(
-                                            color: Colors.grey.shade600,
+                                            color: subtextColor,
                                             fontSize: 14,
                                           ),
                                         ),
                                       Text(
                                         time,
                                         style: TextStyle(
-                                          color: Colors.grey.shade500,
+                                          color: isDark ? Colors.grey.shade600 : Colors.grey.shade500,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -555,9 +594,9 @@ class _DetailPageState extends State<DetailPage> {
                           );
                         },
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
-          }
+          ),
+        ],
+      ),
+    );
+  }
+}
