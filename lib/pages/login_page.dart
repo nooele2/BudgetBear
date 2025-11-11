@@ -66,6 +66,37 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  //forgot psw
+  Future<void> _resetPassword() async {
+  final email = _emailController.text.trim();
+
+  if (email.isEmpty) {
+    _showErrorDialog("Please enter your email first.");
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text("Password Reset Email Sent"),
+          content: Text("A password reset link has been sent to $email"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      _showErrorDialog(e.message ?? "An error occurred while sending email.");
+    }
+  }
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -137,7 +168,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 4.0),
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _resetPassword,
                       child: const Text(
                         "Forgot Password?",
                         style: TextStyle(
