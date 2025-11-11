@@ -1,8 +1,10 @@
+// ai_page.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 import 'package:budget_bear/services/firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AIPage extends StatefulWidget {
   const AIPage({Key? key}) : super(key: key);
@@ -24,19 +26,25 @@ class _AIPageState extends State<AIPage> {
       "Give short, practical financial tips. Explain budgeting concepts simply. "
       "Also answer questions about how to use the BudgetBear app.";
 
+  late final String openRouterApiKey;
+
   @override
   void initState() {
     super.initState();
     loadHistory();
+
+    // Load API key from .env
+    openRouterApiKey = dotenv.env['OPENROUTER_API_KEY'] ?? '';
+    if (openRouterApiKey.isEmpty) { //gracefully handle errror
+      throw Exception("OPENROUTER_API_KEY not found in .env!");
+    }
   }
 
   Future<void> loadHistory() async {
     final history = await firestoreService.getAIChatHistory();
-
     setState(() {
       messages = history;
     });
-
     _scrollToBottom();
   }
 
@@ -44,61 +52,54 @@ class _AIPageState extends State<AIPage> {
     final userMessage = _controller.text.trim();
     if (userMessage.isEmpty) return;
 
-    // Add user message locally
     setState(() {
       messages.add({"role": "user", "text": userMessage});
       isLoading = true;
     });
 
-    // Save to Firestore
     await firestoreService.saveAIMessage("user", userMessage);
 
     _controller.clear();
     _scrollToBottom();
 
-    // Call Gemini API
-    final aiResponse = await callGeminiAPI(userMessage);
+    // Call OpenRouter DeepSeek API
+    final aiResponse = await callDeepSeekAPI(userMessage);
 
-    // Add assistant message locally
     setState(() {
       messages.add({"role": "assistant", "text": aiResponse});
       isLoading = false;
     });
 
-    // Save assistant response
     await firestoreService.saveAIMessage("assistant", aiResponse);
-
     _scrollToBottom();
   }
 
-  // Gemini API call
-  Future<String> callGeminiAPI(String userMessage) async {
-    const apiKey = "AIzaSyCMP7Xd5m9Fs8htyP5W6prf-wwnUqxkxkQ";
-    final url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey";
+  Future<String> callDeepSeekAPI(String userMessage) async {
+    final url = Uri.parse("https://openrouter.ai/api/v1/chat/completions");
 
     final body = {
-      "contents": [
-        {
-          "parts": [
-            {"text": "$systemPrompt\nUser: $userMessage"}
-          ]
-        }
-      ]
+      "model": "deepseek/deepseek-r1:free",
+      "messages": [
+        {"role": "system", "content": systemPrompt},
+        {"role": "user", "content": userMessage}
+      ],
+      "temperature": 0.7,
+      "max_tokens": 500
     };
 
     try {
       final response = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $openRouterApiKey",
+        },
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        final result = data["candidates"]?[0]?["content"]?["parts"]?[0]?["text"];
-
+        final result = data["choices"]?[0]?["message"]?["content"];
         return result ?? "Sorry, I couldn't generate a response.";
       } else {
         return "Error: ${response.statusCode}\n${response.body}";
@@ -140,7 +141,6 @@ class _AIPageState extends State<AIPage> {
           style: TextStyle(color: textColor),
         ),
       ),
-
       body: Column(
         children: [
           Expanded(
@@ -221,7 +221,6 @@ class _AIPageState extends State<AIPage> {
                     },
                   ),
           ),
-
           if (isLoading)
             Padding(
               padding: const EdgeInsets.all(12),
@@ -251,9 +250,7 @@ class _AIPageState extends State<AIPage> {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark ? accent : accent,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(accent),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -270,7 +267,6 @@ class _AIPageState extends State<AIPage> {
                 ],
               ),
             ),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -338,7 +334,6 @@ class _AIPageState extends State<AIPage> {
           ),
         ],
       ),
-
       bottomNavigationBar: const BottomNavBar(currentIndex: 1),
     );
   }
