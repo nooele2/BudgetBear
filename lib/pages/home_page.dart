@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:budget_bear/pages/record_page.dart';
 import 'package:budget_bear/pages/detail_page.dart';
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
+import 'package:budget_bear/widgets/budget_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -230,6 +231,7 @@ class _HomePageState extends State<HomePage> {
     _loadSummaryData();
   }
 
+
   Future<void> _showBudgetEditDialog(BuildContext context) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -395,116 +397,17 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Budget Section
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF47A8A5), Color.fromARGB(255, 143, 96, 225)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0x407C3AED),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "My Budget",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                monthlyBudget > 0
-                                    ? "฿${monthlyBudget.toStringAsFixed(0)}"
-                                    : "฿0",
-                                style: const TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: -1,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => _showBudgetEditDialog(context),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.edit,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            monthlyBudget > 0
-                                ? "Let's make every baht count!"
-                                : "Set your monthly budget",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
-                          if (monthlyBudget > 0) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    "Remaining",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                  Text(
-                                    "฿${(monthlyBudget - totalSpending).toStringAsFixed(2)}",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: (monthlyBudget - totalSpending) >= 0
-                                          ? Colors.white
-                                          : Colors.red.shade200,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                    // Budget Card
+                    UnifiedBudgetCard(
+                    firestoreService: firestoreService,
+                    onBudgetUpdated: () {
+                      // Optionally reload other data if needed
+                      _loadSummaryData();
+                    },
                     ),
                     const SizedBox(height: 24),
 
-                    // Summary Cards
+                    // Summary Cards  
                     LayoutBuilder(builder: (context, constraints) {
                       final bool isWide = constraints.maxWidth > 600;
                       final netSavings = (monthlyBudget > 0)
