@@ -5,6 +5,7 @@ import 'package:budget_bear/firebase_options.dart';
 import 'package:budget_bear/auth/auth_page.dart';
 import 'package:budget_bear/services/theme_provider.dart'; 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:budget_bear/services/device_notification_service.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
@@ -12,6 +13,7 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await DeviceNotificationService().initialize();
 
   runApp(
     ChangeNotifierProvider( 

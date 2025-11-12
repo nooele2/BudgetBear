@@ -4,6 +4,7 @@ import 'package:budget_bear/pages/record_page.dart';
 import 'package:budget_bear/pages/more_page.dart';
 import 'package:budget_bear/pages/ai_page.dart';
 import 'package:budget_bear/pages/notification_page.dart';
+import 'package:budget_bear/services/notification_service.dart';
 
 class BottomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -38,7 +39,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         return;
     }
 
-    //no animation route
+    // no animation route
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -51,23 +52,63 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   @override
   Widget build(BuildContext context) {
-    const Color accent = Color.fromRGBO(71, 168, 165, 1);//accent color code
+    const Color accent = Color.fromRGBO(71, 168, 165, 1);
 
-    return BottomNavigationBar(
-      currentIndex: widget.currentIndex,
-      selectedItemColor: accent,
-      unselectedItemColor: Colors.grey,
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      type: BottomNavigationBarType.fixed,
-      onTap: _onItemTapped,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.smart_toy), label: 'AI'),
-        BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: 'Record'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'More'),
-      ],
+    return StreamBuilder<int>(
+      // listen for unread notification count
+      stream: NotificationService().getUnreadCountStream(),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+
+        return BottomNavigationBar(
+          currentIndex: widget.currentIndex,
+          selectedItemColor: accent,
+          unselectedItemColor: Colors.grey,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+          onTap: _onItemTapped,
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.smart_toy),
+              label: 'AI',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle),
+              label: 'Record',
+            ),
+            BottomNavigationBarItem(
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              label: 'Notifications',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.more_horiz),
+              label: 'More',
+            ),
+          ],
+        );
+      },
     );
   }
 }

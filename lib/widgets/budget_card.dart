@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:budget_bear/services/notification_service.dart';
+
+
+
 
 class UnifiedBudgetCard extends StatefulWidget {
   final dynamic firestoreService;
   final VoidCallback? onBudgetUpdated;
+
+
+
 
   const UnifiedBudgetCard({
     Key? key,
@@ -10,15 +17,25 @@ class UnifiedBudgetCard extends StatefulWidget {
     this.onBudgetUpdated,
   }) : super(key: key);
 
+
+
+
   @override
   State<UnifiedBudgetCard> createState() => _UnifiedBudgetCardState();
 }
 
+
+
+
 class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
+  final NotificationService _notificationService = NotificationService();
   bool isLoading = true;
   double monthlyBudget = 0;
   double totalSpending = 0;
   BudgetStatus status = BudgetStatus.noBudget;
+
+
+
 
   @override
   void initState() {
@@ -26,22 +43,34 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     _loadBudgetData();
   }
 
+
+
+
   Future<void> _loadBudgetData() async {
     setState(() => isLoading = true);
+
+
+
 
     final now = DateTime.now();
     final currentYear = now.year;
     final currentMonth = now.month;
+
+
+
 
     try {
       final summary = await widget.firestoreService.getSummaryData(currentYear, currentMonth);
       final budget = await widget.firestoreService.getMonthlyBudget(currentYear, currentMonth);
       final spending = summary['expense'] ?? 0.0;
 
+
+
+
       setState(() {
         monthlyBudget = budget;
         totalSpending = spending;
-        
+       
         if (budget > 0) {
           final percentage = (spending / budget) * 100;
           if (percentage >= 100) {
@@ -56,9 +85,20 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
         } else {
           status = BudgetStatus.noBudget;
         }
-        
+       
         isLoading = false;
       });
+
+
+
+
+      // Check and create budget notifications
+      await _notificationService.checkBudgetAndNotify(
+        year: currentYear,
+        month: currentMonth,
+        spent: spending,
+        budget: budget,
+      );
     } catch (e) {
       setState(() {
         monthlyBudget = 0;
@@ -69,16 +109,25 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     }
   }
 
+
+
+
   Future<void> _showBudgetEditDialog(BuildContext context) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+   
     final TextEditingController controller =
         TextEditingController(text: monthlyBudget > 0 ? monthlyBudget.toString() : '');
+
+
+
 
     final now = DateTime.now();
     final currentYear = now.year;
     final currentMonth = now.month;
+
+
+
 
     await showDialog(
       context: context,
@@ -117,19 +166,19 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
             ElevatedButton(
               onPressed: () async {
                 final newBudget = double.tryParse(controller.text) ?? 0.0;
-                
+               
                 await widget.firestoreService.setMonthlyBudget(
                   currentYear,
                   currentMonth,
                   newBudget,
                 );
-                
+               
                 await _loadBudgetData();
-                
+               
                 if (widget.onBudgetUpdated != null) {
                   widget.onBudgetUpdated!();
                 }
-                
+               
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -147,6 +196,9 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     );
   }
 
+
+
+
   Color _getStatusColor() {
     switch (status) {
       case BudgetStatus.overBudget:
@@ -162,28 +214,16 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     }
   }
 
-  IconData _getStatusIcon() {
-    switch (status) {
-      case BudgetStatus.overBudget:
-        return Icons.error;
-      case BudgetStatus.warning:
-        return Icons.warning;
-      case BudgetStatus.caution:
-        return Icons.info;
-      case BudgetStatus.onTrack:
-        return Icons.check_circle;
-      case BudgetStatus.noBudget:
-        return Icons.savings_outlined;
-    }
-  }
+
+
 
   String _getStatusMessage() {
     if (monthlyBudget <= 0) {
       return "Set your monthly budget to start tracking";
     }
-    
+   
     final percentage = (totalSpending / monthlyBudget) * 100;
-    
+   
     switch (status) {
       case BudgetStatus.overBudget:
         return "Budget exceeded! You've spent ฿${totalSpending.toStringAsFixed(2)}";
@@ -198,20 +238,14 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     }
   }
 
-  String _getCurrentMonthYear() {
-    final now = DateTime.now();
-    final months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return '${months[now.month - 1]} ${now.year}';
-  }
+
+
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+   
     if (isLoading) {
       return Container(
         padding: const EdgeInsets.all(40),
@@ -227,24 +261,24 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
           ],
         ),
         child: const Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-          ),
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       );
     }
 
+
+
+
     final percentage = monthlyBudget > 0 ? (totalSpending / monthlyBudget) * 100 : 0.0;
-    final remaining = monthlyBudget - totalSpending;
+
+
+
 
     return GestureDetector(
       onTap: () => _showBudgetEditDialog(context),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(
-            width: 2,
-            color: Colors.transparent,
-          ),
+          border: Border.all(width: 2, color: Colors.transparent),
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
@@ -276,7 +310,6 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
           ),
           child: Column(
             children: [
-              // Header section with gradient background
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Row(
@@ -320,8 +353,6 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
                   ],
                 ),
               ),
-              
-              // White background section
               Container(
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
@@ -347,14 +378,12 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
-                            // Progress bar
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
                                 value: (percentage / 100).clamp(0.0, 1.0),
-                                backgroundColor: isDark 
-                                    ? Colors.grey.shade800 
+                                backgroundColor: isDark
+                                    ? Colors.grey.shade800
                                     : Colors.grey.shade200,
                                 color: _getStatusColor(),
                                 minHeight: 8,
@@ -363,8 +392,6 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
                           ],
                         ),
                       ),
-                      
-                      // Spent and Budget row
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         child: Row(
@@ -456,6 +483,9 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
   }
 }
 
+
+
+
 enum BudgetStatus {
   noBudget,
   onTrack,
@@ -463,3 +493,6 @@ enum BudgetStatus {
   warning,
   overBudget,
 }
+
+
+

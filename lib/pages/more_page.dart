@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:budget_bear/pages/edit_profile_page.dart';
@@ -7,12 +6,12 @@ import 'package:budget_bear/pages/login_page.dart';
 import 'package:budget_bear/pages/register_page.dart';
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 import 'package:budget_bear/services/theme_provider.dart';
-import 'package:budget_bear/services/firestore.dart';
-import 'package:budget_bear/services/email_service.dart';  
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:intl/intl.dart';
+import 'package:budget_bear/services/email_service.dart';
+import 'package:budget_bear/services/device_notification_service.dart';
+import 'package:budget_bear/services/profile_service.dart';
+import 'package:budget_bear/services/expense_data_service.dart';
+import 'package:budget_bear/services/pdf_service.dart';
+import 'package:budget_bear/widgets/date_range_dialog.dart';
 
 class MorePage extends StatefulWidget {
   const MorePage({Key? key}) : super(key: key);
@@ -23,225 +22,50 @@ class MorePage extends StatefulWidget {
 
 class _MorePageState extends State<MorePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirestoreService _firestoreService = FirestoreService();
+  final ProfileService _profileService = ProfileService();
+  final ExpenseDataService _expenseDataService = ExpenseDataService();
+  final DeviceNotificationService _deviceNotificationService =
+      DeviceNotificationService();
 
   String _name = '';
   String _email = '';
+  bool _deviceNotificationsEnabled = false;
+  bool _isLoadingNotificationStatus = true;
 
   static const Color accent = Color.fromRGBO(71, 168, 165, 1);
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    await _deviceNotificationService.initialize();
+    await _loadUserProfile();
+    await _loadNotificationStatus();
   }
 
   Future<void> _loadUserProfile() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    final doc = await _db.collection('users').doc(user.uid).get();
+    final profile = await _profileService.getUserProfile();
     setState(() {
-      _name = doc['name'] ?? '';
-      _email = user.email ?? '';
+      _name = profile['name'] ?? '';
+      _email = profile['email'] ?? '';
     });
   }
 
-  Future<void> _showDateRangePicker({bool isForEmail = false}) async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    DateTime? startDate;
-    DateTime? endDate;
-
-    final result = await showDialog<Map<String, DateTime>>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                isForEmail ? 'Select Date Range for Email' : 'Select Date Range',
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Start Date
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'From',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.white70 : Colors.grey[700],
-                      ),
-                    ),
-                    subtitle: Text(
-                      startDate != null
-                          ? DateFormat('MMM dd, yyyy').format(startDate!)
-                          : 'Select start date',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.calendar_today, color: accent),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: startDate ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now(),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: isDark
-                                  ? const ColorScheme.dark(
-                                      primary: accent,
-                                      surface: Color(0xFF1E1E1E),
-                                    )
-                                  : const ColorScheme.light(primary: accent),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setStateDialog(() => startDate = picked);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // End Date
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'To',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.white70 : Colors.grey[700],
-                      ),
-                    ),
-                    subtitle: Text(
-                      endDate != null
-                          ? DateFormat('MMM dd, yyyy').format(endDate!)
-                          : 'Select end date',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.calendar_today, color: accent),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: endDate ?? DateTime.now(),
-                        firstDate: startDate ?? DateTime(2000),
-                        lastDate: DateTime.now(),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: isDark
-                                  ? const ColorScheme.dark(
-                                      primary: accent,
-                                      surface: Color(0xFF1E1E1E),
-                                    )
-                                  : const ColorScheme.light(primary: accent),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setStateDialog(() => endDate = picked);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.grey[700],
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: startDate != null && endDate != null
-                      ? () {
-                          Navigator.pop(context, {
-                            'start': startDate!,
-                            'end': endDate!,
-                          });
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(isForEmail ? 'Send Email' : 'Download'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (result != null) {
-      if (isForEmail) {
-        _sendEmailSummary(result['start']!, result['end']!);
-      } else {
-        _generatePDF(result['start']!, result['end']!);
-      }
-    }
+  Future<void> _loadNotificationStatus() async {
+    setState(() => _isLoadingNotificationStatus = true);
+    final enabled = await _deviceNotificationService.areNotificationsEnabled();
+    setState(() {
+      _deviceNotificationsEnabled = enabled;
+      _isLoadingNotificationStatus = false;
+    });
   }
 
-  Future<void> _sendEmailSummary(DateTime startDate, DateTime endDate) async {
-    try {
-      // Check if email service is configured BEFORE showing loading
-      if (!EmailService.isConfigured()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  '❌ Email service not configured',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Steps to fix:\n1. Ensure .env file exists in project root\n2. Add SENDGRID_API_KEY to .env\n3. Add SENDER_EMAIL to .env\n4. Verify sender email in SendGrid dashboard\n5. Run flutter clean && flutter pub get',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 8),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-
-      // Show loading indicator
+  Future<void> _toggleDeviceNotifications(bool value) async {
+    if (value) {
+      // Enabling notifications
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -250,14 +74,56 @@ class _MorePageState extends State<MorePage> {
         ),
       );
 
-      // Fetch data for the date range
-      final data = await _fetchExpenseData(startDate, endDate);
+      final success = await _deviceNotificationService.enableNotifications();
 
-      print('📊 Fetched data: ${data.keys}');
-      print('📧 Sending to: $_email');
-      print('👤 Recipient name: $_name');
+      if (!mounted) return;
+      Navigator.pop(context);
 
-      // Send email using EmailService
+      if (success) {
+        setState(() => _deviceNotificationsEnabled = true);
+        _showSuccessSnackBar('Device notifications enabled!');
+      } else {
+        _showErrorSnackBar(
+          'Permission denied',
+          'Please enable notifications in your device settings.',
+        );
+      }
+    } else {
+      // Disabling notifications
+      final success = await _deviceNotificationService.disableNotifications();
+      if (success) {
+        setState(() => _deviceNotificationsEnabled = false);
+        _showInfoSnackBar('Device notifications disabled');
+      }
+    }
+  }
+
+  Future<void> _handleDateRangeSelection({required bool isForEmail}) async {
+    final result = await DateRangeDialog.show(
+      context: context,
+      isForEmail: isForEmail,
+    );
+
+    if (result != null) {
+      if (isForEmail) {
+        await _sendEmailSummary(result['start']!, result['end']!);
+      } else {
+        await _downloadPDF(result['start']!, result['end']!);
+      }
+    }
+  }
+
+  Future<void> _sendEmailSummary(DateTime startDate, DateTime endDate) async {
+    try {
+      if (!EmailService.isConfigured()) {
+        _showConfigurationError();
+        return;
+      }
+
+      _showLoadingDialog();
+
+      final data = await _expenseDataService.fetchExpenseData(startDate, endDate);
+
       final success = await EmailService.sendExpenseSummaryEmail(
         recipientEmail: _email,
         recipientName: _name,
@@ -266,401 +132,58 @@ class _MorePageState extends State<MorePage> {
         summaryData: data,
       );
 
-      // Close loading dialog
       if (!mounted) return;
       Navigator.pop(context);
 
-      // Show result message
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text('Email sent successfully to $_email'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSuccessSnackBar('Email sent successfully to $_email');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  '❌ Failed to send email',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Check debug logs for details. Common issues:\n• API key invalid/expired\n• Sender email not verified in SendGrid\n• Network connection issue',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 6),
-            behavior: SnackBarBehavior.floating,
-          ),
+        _showErrorSnackBar(
+          'Failed to send email',
+          'Check debug logs for details.',
         );
       }
     } catch (e) {
-      // Close loading dialog if still open
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      
+
       if (!mounted) return;
-      
-      // Show detailed error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '❌ Exception while sending email',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                e.toString(),
-                style: const TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 6),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      
-      // Print to console for debugging
-      print('❌ Email Error Details: $e');
-      print('Stack trace:');
-      print(StackTrace.current);
+      _showErrorSnackBar('Error', e.toString());
     }
   }
 
-  Future<void> _generatePDF(DateTime startDate, DateTime endDate) async {
+  Future<void> _downloadPDF(DateTime startDate, DateTime endDate) async {
     try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: accent),
-        ),
+      _showLoadingDialog();
+
+      final data = await _expenseDataService.fetchExpenseData(startDate, endDate);
+
+      await PdfService.generateExpensePDF(
+        startDate: startDate,
+        endDate: endDate,
+        data: data,
       );
 
-      // Fetch data for the date range
-      final data = await _fetchExpenseData(startDate, endDate);
-
-      // Create PDF
-      final pdf = pw.Document();
-
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          build: (context) => [
-            // Header
-            pw.Header(
-              level: 0,
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Budget Bear',
-                    style: pw.TextStyle(
-                      fontSize: 28,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColor.fromHex('#47A8A5'),
-                    ),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Text(
-                    'Expense Summary Report',
-                    style: pw.TextStyle(
-                      fontSize: 20,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    '${DateFormat('MMM dd, yyyy').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)}',
-                    style: const pw.TextStyle(
-                      fontSize: 14,
-                      color: PdfColors.grey700,
-                    ),
-                  ),
-                  pw.Divider(thickness: 2),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 20),
-
-            // Summary Section
-            pw.Container(
-              padding: const pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#F5F7FA'),
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Column(
-                children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSummaryItem('Total Income', data['totalIncome'], true),
-                      _buildSummaryItem('Total Expenses', data['totalExpenses'], false),
-                      _buildSummaryItem('Net Savings', data['netSavings'], data['netSavings'] >= 0),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 24),
-
-            // Category Breakdown
-            pw.Text(
-              'Expense Breakdown by Category',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-            _buildCategoryTable(data['categories']),
-            pw.SizedBox(height: 24),
-
-            // Daily Transactions
-            pw.Text(
-              'Daily Transactions',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-            _buildDailyTransactionsTable(data['dailyTransactions']),
-          ],
-          footer: (context) => pw.Container(
-            alignment: pw.Alignment.centerRight,
-            margin: const pw.EdgeInsets.only(top: 16),
-            child: pw.Text(
-              'Generated on ${DateFormat('MMM dd, yyyy HH:mm').format(DateTime.now())}',
-              style: const pw.TextStyle(
-                fontSize: 10,
-                color: PdfColors.grey600,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Close loading dialog
+      if (!mounted) return;
       Navigator.pop(context);
 
-      // Show PDF preview and allow user to save/share
-      await Printing.layoutPdf(
-        onLayout: (format) async => pdf.save(),
-        name: 'expense_summary_${DateFormat('yyyy_MM_dd').format(DateTime.now())}.pdf',
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PDF generated successfully!'),
-          backgroundColor: accent,
-        ),
-      );
+      _showSuccessSnackBar('PDF generated successfully!');
     } catch (e) {
-      // Close loading dialog if still open
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+
+      if (!mounted) return;
+      _showErrorSnackBar('Error generating PDF', e.toString());
     }
-  }
-
-  pw.Widget _buildSummaryItem(String label, double amount, bool isPositive) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        pw.Text(
-          label,
-          style: const pw.TextStyle(
-            fontSize: 12,
-            color: PdfColors.grey700,
-          ),
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          '\$${amount.toStringAsFixed(2)}',
-          style: pw.TextStyle(
-            fontSize: 16,
-            fontWeight: pw.FontWeight.bold,
-            color: isPositive ? PdfColors.green : PdfColors.red,
-          ),
-        ),
-      ],
-    );
-  }
-
-  pw.Widget _buildCategoryTable(Map<String, double> categories) {
-    if (categories.isEmpty) {
-      return pw.Text('No expense data available');
-    }
-
-    return pw.Table.fromTextArray(
-      headerStyle: pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        color: PdfColors.white,
-      ),
-      headerDecoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#47A8A5'),
-      ),
-      cellAlignment: pw.Alignment.centerLeft,
-      cellPadding: const pw.EdgeInsets.all(8),
-      headers: ['Category', 'Amount', 'Percentage'],
-      data: categories.entries.map((entry) {
-        final total = categories.values.fold(0.0, (sum, val) => sum + val);
-        final percentage = (entry.value / total * 100).toStringAsFixed(1);
-        return [
-          entry.key,
-          '\$${entry.value.toStringAsFixed(2)}',
-          '$percentage%',
-        ];
-      }).toList(),
-    );
-  }
-
-  pw.Widget _buildDailyTransactionsTable(List<Map<String, dynamic>> transactions) {
-    if (transactions.isEmpty) {
-      return pw.Text('No transactions available');
-    }
-
-    return pw.Table.fromTextArray(
-      headerStyle: pw.TextStyle(
-        fontWeight: pw.FontWeight.bold,
-        color: PdfColors.white,
-      ),
-      headerDecoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#47A8A5'),
-      ),
-      cellAlignment: pw.Alignment.centerLeft,
-      cellPadding: const pw.EdgeInsets.all(8),
-      cellHeight: 35,
-      headers: ['Date', 'Category', 'Description', 'Type', 'Amount'],
-      data: transactions.map((tx) {
-        return [
-          tx['date'],
-          tx['category'],
-          tx['note'].isEmpty ? '-' : tx['note'],
-          tx['type'] == 'expense' ? 'Expense' : 'Income',
-          '\$${tx['amount'].toStringAsFixed(2)}',
-        ];
-      }).toList(),
-    );
-  }
-
-  Future<Map<String, dynamic>> _fetchExpenseData(
-      DateTime startDate, DateTime endDate) async {
-    double totalIncome = 0.0;
-    double totalExpenses = 0.0;
-    Map<String, double> categories = {};
-    List<Map<String, dynamic>> dailyTransactions = [];
-
-    // Fetch all transactions in the date range
-    final user = _auth.currentUser;
-    if (user == null) {
-      return {
-        'totalIncome': 0.0,
-        'totalExpenses': 0.0,
-        'netSavings': 0.0,
-        'categories': {},
-        'dailyTransactions': [],
-      };
-    }
-
-    final querySnapshot = await _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('transactions')
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate.add(const Duration(days: 1))))
-        .orderBy('date', descending: true)
-        .get();
-
-    for (var doc in querySnapshot.docs) {
-      final data = doc.data();
-      final amount = (data['amount'] ?? 0.0).toDouble();
-      final type = data['type'] ?? 'expense';
-      final category = data['category'] ?? 'Unknown';
-      final note = data['note'] ?? '';
-      final date = (data['date'] as Timestamp).toDate();
-
-      if (type == 'income') {
-        totalIncome += amount;
-      } else {
-        totalExpenses += amount;
-        // Aggregate categories (only for expenses)
-        categories[category] = (categories[category] ?? 0.0) + amount;
-      }
-
-      // Add to daily transactions
-      dailyTransactions.add({
-        'date': DateFormat('dd MMM yyyy').format(date),
-        'category': category,
-        'note': note,
-        'type': type,
-        'amount': amount,
-      });
-    }
-
-    return {
-      'totalIncome': totalIncome,
-      'totalExpenses': totalExpenses,
-      'netSavings': totalIncome - totalExpenses,
-      'categories': categories,
-      'dailyTransactions': dailyTransactions,
-    };
   }
 
   Future<void> _logout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text("Log Out"),
-        content: const Text("Are you sure you want to log out?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Log Out"),
-          ),
-        ],
-      ),
-    );
+    final confirm = await _showLogoutConfirmation();
 
     if (confirm == true) {
+      _deviceNotificationService.dispose();
       await _auth.signOut();
 
       if (!mounted) return;
@@ -693,6 +216,117 @@ class _MorePageState extends State<MorePage> {
     }
   }
 
+  // UI Helper Methods
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: accent),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showInfoSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: accent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String title, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '❌ $title',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(message, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showConfigurationError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              '❌ Email service not configured',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Steps to fix:\n1. Ensure .env file exists in project root\n2. Add SENDGRID_API_KEY to .env\n3. Add SENDER_EMAIL to .env\n4. Verify sender email in SendGrid dashboard\n5. Run flutter clean && flutter pub get',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 8),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<bool?> _showLogoutConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text("Log Out"),
+        content: const Text("Are you sure you want to log out?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Log Out"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _deviceNotificationService.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -712,19 +346,18 @@ class _MorePageState extends State<MorePage> {
         children: [
           _buildSectionTitle('Profile', theme),
           _buildProfileCard(theme),
-
+          const SizedBox(height: 24),
+          _buildSectionTitle('Notifications', theme),
+          _buildNotificationsCard(theme),
           const SizedBox(height: 24),
           _buildSectionTitle('Settings', theme),
           _buildSettingsCard(theme),
-
           const SizedBox(height: 24),
           _buildSectionTitle('Appearance', theme),
           _buildAppearanceCard(theme, themeProvider),
-
           const SizedBox(height: 24),
           _buildSectionTitle('About', theme),
           _buildAboutCard(theme),
-
           const SizedBox(height: 40),
           _buildLogoutButton(theme),
         ],
@@ -733,8 +366,7 @@ class _MorePageState extends State<MorePage> {
     );
   }
 
-  // ---------- UI COMPONENTS ----------
-
+  // UI Component Builders
   Widget _buildProfileCard(ThemeData theme) {
     return Container(
       decoration: _cardDecoration(theme),
@@ -781,6 +413,26 @@ class _MorePageState extends State<MorePage> {
     );
   }
 
+  Widget _buildNotificationsCard(ThemeData theme) {
+    return Container(
+      decoration: _cardDecoration(theme),
+      child: SwitchListTile(
+        secondary: const Icon(Icons.notifications_active, color: accent),
+        title: Text('Device Notifications', style: theme.textTheme.bodyMedium),
+        subtitle: Text(
+          'Receive budget alerts on your device',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.textTheme.bodyMedium!.color!.withOpacity(0.6),
+          ),
+        ),
+        value: _deviceNotificationsEnabled,
+        activeColor: accent,
+        onChanged:
+            _isLoadingNotificationStatus ? null : _toggleDeviceNotifications,
+      ),
+    );
+  }
+
   Widget _buildSettingsCard(ThemeData theme) {
     return Container(
       decoration: _cardDecoration(theme),
@@ -796,12 +448,13 @@ class _MorePageState extends State<MorePage> {
               ),
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => _showDateRangePicker(isForEmail: true),
+            onTap: () => _handleDateRangeSelection(isForEmail: true),
           ),
           const Divider(height: 0),
           ListTile(
             leading: const Icon(Icons.download_outlined, color: accent),
-            title: Text('Download Expense Summary', style: theme.textTheme.bodyMedium),
+            title:
+                Text('Download Expense Summary', style: theme.textTheme.bodyMedium),
             subtitle: Text(
               'Download PDF summary for a date range',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -809,7 +462,7 @@ class _MorePageState extends State<MorePage> {
               ),
             ),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => _showDateRangePicker(isForEmail: false),
+            onTap: () => _handleDateRangeSelection(isForEmail: false),
           ),
         ],
       ),
@@ -856,7 +509,8 @@ class _MorePageState extends State<MorePage> {
                 applicationVersion: '1.0.0',
                 applicationIcon: const Icon(Icons.pets, color: accent),
                 children: const [
-                  Text('Budget Bear helps you track and manage your expenses easily.'),
+                  Text(
+                      'Budget Bear helps you track and manage your expenses easily.'),
                 ],
               );
             },

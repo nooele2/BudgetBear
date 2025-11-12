@@ -4,18 +4,22 @@ import 'package:intl/intl.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EmailService {
-  // SendGrid Configuration
-  static String get _sendGridApiKey => dotenv.env['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'] ?? '';
-  static String get _senderEmail => dotenv.env['budgetbear77@gmail.com'] ?? '';
+// --- CONFIGURATION NOT NEEDED ON CLIENT ---
+  // The client doesn't need the API key or sender email,
+  // as the server handles authentication.
   static const String _senderName = 'Budget Bear';
 
-  /// Validates email configuration
+  // 🎯 CHANGE THIS TO YOUR FLASK SERVER URL 🎯
+  // Use the full URL to the Flask endpoint
+  static const String _serverUrl = 'https://budgetbear-backend-server.onrender.com/send-email'; 
+
+  /// Validates server configuration (simplified for client)
   static bool isConfigured() {
-    final configured = _sendGridApiKey.isNotEmpty && _senderEmail.isNotEmpty;
-    return configured;
+    // We only check if the server URL is defined (which it is, statically)
+    return true; 
   }
 
-  /// Sends an expense summary email using SendGrid
+  /// Sends an expense summary email by calling the Flask backend
   static Future<bool> sendExpenseSummaryEmail({
     required String recipientEmail,
     required String recipientName,
@@ -24,21 +28,12 @@ class EmailService {
     required Map<String, dynamic> summaryData,
   }) async {
     try {
-      // DEBUG: Print environment variables
-      print('🔍 DEBUG: Checking environment variables...');
-      print('API Key exists: ${dotenv.env['SENDGRID_API_KEY']?.isNotEmpty ?? false}');
-      if (dotenv.env['SENDGRID_API_KEY'] != null && dotenv.env['SENDGRID_API_KEY']!.length >= 10) {
-        print('API Key first 10 chars: ${dotenv.env['SENDGRID_API_KEY']!.substring(0, 10)}');
-      }
-      print('Sender Email: ${dotenv.env['SENDER_EMAIL']}');
-      print('Is Configured: ${isConfigured()}');
+      // ❌ REMOVE: All environment variable checks are removed
+      // since the server handles them securely.
       
-      if (!isConfigured()) {
-        print('❌ Email service not configured!');
-        return false;
-      }
-
-      // Build email HTML content
+      // 1. Build email HTML content using the existing function.
+      // This is necessary because the Flask route you provided 
+      // is written to accept a full 'content' HTML string.
       final emailHtml = _buildEmailHtml(
         recipientName,
         startDate,
@@ -46,55 +41,48 @@ class EmailService {
         summaryData,
       );
 
-      // SendGrid API endpoint
-      final url = Uri.parse('https://api.sendgrid.com/v3/mail/send');
-
-      // Prepare email payload
+      // 2. Prepare payload for the Flask server (simplified)
       final payload = {
-        'personalizations': [
-          {
-            'to': [
-              {'email': recipientEmail, 'name': recipientName}
-            ],
-            'subject': 'Budget Bear - Expense Summary (${DateFormat('MMM dd, yyyy').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)})'
-          }
-        ],
-        'from': {'email': _senderEmail, 'name': _senderName},
-        'content': [
-          {'type': 'text/html', 'value': emailHtml}
-        ]
+        'to': recipientEmail,
+        'subject': 'Budget Bear - Expense Summary (${DateFormat('MMM dd, yyyy').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)})',
+        // The Flask server expects the full HTML string here
+        'content': emailHtml, 
+        
+        // You can optionally send the raw data too, if you want 
+        // the server to build the HTML instead. The current Flask 
+        // code requires the 'content' field.
       };
 
-      print('📤 Sending email to: $recipientEmail');
-      print('From: $_senderEmail');
+      print('📤 Calling backend server at: $_serverUrl');
+      print('Target email: $recipientEmail');
 
-      // Send request to SendGrid
+      // 3. Send POST request to the Flask server
       final response = await http.post(
-        url,
+        Uri.parse(_serverUrl),
         headers: {
-          'Authorization': 'Bearer $_sendGridApiKey',
+          // No Authorization header needed, as the server handles it
           'Content-Type': 'application/json',
         },
         body: json.encode(payload),
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      print('Response Status from Flask: ${response.statusCode}');
+      print('Response Body from Flask: ${response.body}');
 
-      if (response.statusCode == 202) {
-        print('✅ Email sent successfully via SendGrid');
+      if (response.statusCode == 200) {
+        print('✅ Email request successfully processed by Flask server.');
         return true;
       } else {
-        print('❌ Failed to send email. Status: ${response.statusCode}');
-        print('Response: ${response.body}');
+        print('❌ Server failed to send email. Status: ${response.statusCode}');
+        // The error message from the Flask server will be in the response body
         return false;
       }
     } catch (e) {
-      print('❌ Error sending email: $e');
+      // This catch block will now catch errors connecting to http://localhost:5000
+      print('❌ Error connecting to server: $e');
       return false;
     }
   }
-
   /// Builds the HTML content for the expense summary email
   static String _buildEmailHtml(
     String name,
