@@ -4,11 +4,15 @@ import 'package:budget_bear/services/notification_service.dart';
 class UnifiedBudgetCard extends StatefulWidget {
   final dynamic firestoreService;
   final VoidCallback? onBudgetUpdated;
+  final int selectedYear;  // ADD THIS
+  final int selectedMonth; // ADD THIS
 
   const UnifiedBudgetCard({
     Key? key,
     required this.firestoreService,
     this.onBudgetUpdated,
+    required this.selectedYear,  // ADD THIS
+    required this.selectedMonth, // ADD THIS
   }) : super(key: key);
 
   @override
@@ -28,16 +32,26 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     _loadBudgetData();
   }
 
+  @override
+  void didUpdateWidget(UnifiedBudgetCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload data when the selected month changes
+    if (oldWidget.selectedYear != widget.selectedYear ||
+        oldWidget.selectedMonth != widget.selectedMonth) {
+      _loadBudgetData();
+    }
+  }
+
   Future<void> _loadBudgetData() async {
     setState(() => isLoading = true);
 
-    final now = DateTime.now();
-    final currentYear = now.year;
-    final currentMonth = now.month;
+    // Use the selected year/month instead of current date
+    final selectedYear = widget.selectedYear;
+    final selectedMonth = widget.selectedMonth;
 
     try {
-      final summary = await widget.firestoreService.getSummaryData(currentYear, currentMonth);
-      final budget = await widget.firestoreService.getMonthlyBudget(currentYear, currentMonth);
+      final summary = await widget.firestoreService.getSummaryData(selectedYear, selectedMonth);
+      final budget = await widget.firestoreService.getMonthlyBudget(selectedYear, selectedMonth);
       final spending = summary['expense'] ?? 0.0;
 
       setState(() {
@@ -62,13 +76,16 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
         isLoading = false;
       });
 
-      // Check and create budget notifications
-      await _notificationService.checkBudgetAndNotify(
-        year: currentYear,
-        month: currentMonth,
-        spent: spending,
-        budget: budget,
-      );
+      // Only check notifications for the CURRENT month
+      final now = DateTime.now();
+      if (selectedYear == now.year && selectedMonth == now.month) {
+        await _notificationService.checkBudgetAndNotify(
+          year: selectedYear,
+          month: selectedMonth,
+          spent: spending,
+          budget: budget,
+        );
+      }
     } catch (e) {
       setState(() {
         monthlyBudget = 0;
@@ -86,9 +103,13 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
     final TextEditingController controller =
         TextEditingController(text: monthlyBudget > 0 ? monthlyBudget.toString() : '');
 
-    final now = DateTime.now();
-    final currentYear = now.year;
-    final currentMonth = now.month;
+    // Use selected year/month for editing
+    final selectedYear = widget.selectedYear;
+    final selectedMonth = widget.selectedMonth;
+
+    // Get month name for display
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final monthName = monthNames[selectedMonth - 1];
 
     await showDialog(
       context: context,
@@ -97,7 +118,7 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            "Edit Monthly Budget",
+            "Edit Budget for $monthName $selectedYear",
             style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           ),
           content: TextField(
@@ -105,7 +126,7 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
             keyboardType: TextInputType.number,
             style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             decoration: InputDecoration(
-              labelText: "Enter new budget (฿)",
+              labelText: "Enter budget for $monthName (฿)",
               labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
               border: const OutlineInputBorder(),
               enabledBorder: OutlineInputBorder(
@@ -129,8 +150,8 @@ class _UnifiedBudgetCardState extends State<UnifiedBudgetCard> {
                 final newBudget = double.tryParse(controller.text) ?? 0.0;
                
                 await widget.firestoreService.setMonthlyBudget(
-                  currentYear,
-                  currentMonth,
+                  selectedYear,
+                  selectedMonth,
                   newBudget,
                 );
                

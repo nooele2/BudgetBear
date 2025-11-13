@@ -151,6 +151,8 @@ class _HomePageState extends State<HomePage> {
                     // Budget Card
                     UnifiedBudgetCard(
                       firestoreService: _firestoreService,
+                      selectedYear: selectedYear,
+                      selectedMonth: currentMonthIndex + 1, // Convert to 1-based month
                       onBudgetUpdated: _loadSummaryData,
                     ),
                     const SizedBox(height: 24),

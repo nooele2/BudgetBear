@@ -379,10 +379,8 @@ class _NotificationPageState extends State<NotificationPage> {
 
   String _getLabelForLevel(String level) {
     switch (level) {
-      case 'caution':
-        return 'over 80% Alert';
       case 'warning':
-        return 'over 90% Warning';
+        return 'over 80% Warning';
       case 'danger':
         return 'Budget Exceeded';
       default:
