@@ -119,35 +119,46 @@ class FirestoreService {
 
   /// Helper for adding a transaction (used in testing or record page)
   /// UPDATED: Now checks budget notifications after adding expense
-  Future<void> addTransaction({
-    required String title,
-    required String category,
-    required double amount,
-    required String type, // 'income' or 'expense'
-    DateTime? date,
-  }) async {
-    final transactionDate = date ?? DateTime.now();
-    
-    final ref = _db
-        .collection('users')
-        .doc(userId)
-        .collection('transactions')
-        .doc();
+Future<void> addTransaction({
+  required String title,
+  required String category,
+  required double amount,
+  required String type, // 'income' or 'expense'
+  DateTime? date,        // optional user-picked date
+}) async {
+  // If a date is provided, keep its year/month/day but add current time
+  final now = DateTime.now();
+  final transactionDate = date != null
+      ? DateTime(
+          date.year,
+          date.month,
+          date.day,
+          now.hour,
+          now.minute,
+          now.second,
+        )
+      : now; // if no date, use current time
 
-    await ref.set({
-      'title': title,
-      'category': category,
-      'amount': amount,
-      'type': type,
-      'date': Timestamp.fromDate(transactionDate),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  final ref = _db
+      .collection('users')
+      .doc(userId)
+      .collection('transactions')
+      .doc();
 
-    // Check notifications only for expenses
-    if (type.toLowerCase() == 'expense') {
-      await _checkBudgetNotification(transactionDate.year, transactionDate.month);
-    }
+  await ref.set({
+    'title': title,
+    'category': category,
+    'amount': amount,
+    'type': type,
+    'date': Timestamp.fromDate(transactionDate),
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+
+  // Check notifications only for expenses
+  if (type.toLowerCase() == 'expense') {
+    await _checkBudgetNotification(transactionDate.year, transactionDate.month);
   }
+}
 
   /// Helper method to check budget notifications
   Future<void> _checkBudgetNotification(int year, int month) async {
