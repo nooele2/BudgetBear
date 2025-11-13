@@ -116,11 +116,14 @@ class _RecordPageState extends State<RecordPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
+        centerTitle: true,
         title: Text(
           'Record Transaction',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

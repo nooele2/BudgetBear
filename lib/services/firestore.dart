@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:budget_bear/services/notification_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   /// Get current logged-in user's ID
   String get userId {
@@ -116,6 +118,7 @@ class FirestoreService {
   }
 
   /// Helper for adding a transaction (used in testing or record page)
+  /// UPDATED: Now checks budget notifications after adding expense
   Future<void> addTransaction({
     required String title,
     required String category,
@@ -123,6 +126,8 @@ class FirestoreService {
     required String type, // 'income' or 'expense'
     DateTime? date,
   }) async {
+    final transactionDate = date ?? DateTime.now();
+    
     final ref = _db
         .collection('users')
         .doc(userId)
@@ -134,9 +139,32 @@ class FirestoreService {
       'category': category,
       'amount': amount,
       'type': type,
-      'date': Timestamp.fromDate(date ?? DateTime.now()),
+      'date': Timestamp.fromDate(transactionDate),
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // Check notifications only for expenses
+    if (type.toLowerCase() == 'expense') {
+      await _checkBudgetNotification(transactionDate.year, transactionDate.month);
+    }
+  }
+
+  /// Helper method to check budget notifications
+  Future<void> _checkBudgetNotification(int year, int month) async {
+    try {
+      final summary = await getSummaryData(year, month);
+      final budget = await getMonthlyBudget(year, month);
+      final spent = (summary['expense'] ?? 0.0).toDouble();
+
+      await _notificationService.checkBudgetAndNotify(
+        year: year,
+        month: month,
+        spent: spent,
+        budget: budget,
+      );
+    } catch (e) {
+      print('Error checking budget notification: $e');
+    }
   }
 
   //save monthly budget
@@ -211,23 +239,23 @@ class FirestoreService {
     }
   }
 
-// Save AI message
-Future<void> saveAIMessage(String role, String text) async {
-  final uid = _auth.currentUser?.uid;
-  if (uid == null) return;
+  // Save AI message
+  Future<void> saveAIMessage(String role, String text) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
 
-  await _db
-      .collection("users")
-      .doc(uid)
-      .collection("ai_chat")
-      .add({
-    "role": role,
-    "text": text,
-    "timestamp": FieldValue.serverTimestamp(),
-  });
-}
+    await _db
+        .collection("users")
+        .doc(uid)
+        .collection("ai_chat")
+        .add({
+      "role": role,
+      "text": text,
+      "timestamp": FieldValue.serverTimestamp(),
+    });
+  }
 
-// Get AI chat history
+  // Get AI chat history
   Future<List<Map<String, String>>> getAIChatHistory() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return [];

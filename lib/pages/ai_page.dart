@@ -132,13 +132,15 @@ class _AIPageState extends State<AIPage> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        iconTheme: IconThemeData(color: textColor),
         backgroundColor: bgColor,
         elevation: 0,
         centerTitle: true,
         title: Text(
           "BudgetBear AI",
-          style: TextStyle(color: textColor),
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: Column(

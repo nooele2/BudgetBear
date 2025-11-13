@@ -7,7 +7,6 @@ import 'package:budget_bear/pages/register_page.dart';
 import 'package:budget_bear/widgets/bottom_nav_bar.dart';
 import 'package:budget_bear/services/theme_provider.dart';
 import 'package:budget_bear/services/email_service.dart';
-import 'package:budget_bear/services/device_notification_service.dart';
 import 'package:budget_bear/services/profile_service.dart';
 import 'package:budget_bear/services/expense_data_service.dart';
 import 'package:budget_bear/services/pdf_service.dart';
@@ -24,26 +23,16 @@ class _MorePageState extends State<MorePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ProfileService _profileService = ProfileService();
   final ExpenseDataService _expenseDataService = ExpenseDataService();
-  final DeviceNotificationService _deviceNotificationService =
-      DeviceNotificationService();
 
   String _name = '';
   String _email = '';
-  bool _deviceNotificationsEnabled = false;
-  bool _isLoadingNotificationStatus = true;
 
   static const Color accent = Color.fromRGBO(71, 168, 165, 1);
 
   @override
   void initState() {
     super.initState();
-    _initializeServices();
-  }
-
-  Future<void> _initializeServices() async {
-    await _deviceNotificationService.initialize();
-    await _loadUserProfile();
-    await _loadNotificationStatus();
+    _loadUserProfile();
   }
 
   Future<void> _loadUserProfile() async {
@@ -52,50 +41,6 @@ class _MorePageState extends State<MorePage> {
       _name = profile['name'] ?? '';
       _email = profile['email'] ?? '';
     });
-  }
-
-  Future<void> _loadNotificationStatus() async {
-    setState(() => _isLoadingNotificationStatus = true);
-    final enabled = await _deviceNotificationService.areNotificationsEnabled();
-    setState(() {
-      _deviceNotificationsEnabled = enabled;
-      _isLoadingNotificationStatus = false;
-    });
-  }
-
-  Future<void> _toggleDeviceNotifications(bool value) async {
-    if (value) {
-      // Enabling notifications
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: accent),
-        ),
-      );
-
-      final success = await _deviceNotificationService.enableNotifications();
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      if (success) {
-        setState(() => _deviceNotificationsEnabled = true);
-        _showSuccessSnackBar('Device notifications enabled!');
-      } else {
-        _showErrorSnackBar(
-          'Permission denied',
-          'Please enable notifications in your device settings.',
-        );
-      }
-    } else {
-      // Disabling notifications
-      final success = await _deviceNotificationService.disableNotifications();
-      if (success) {
-        setState(() => _deviceNotificationsEnabled = false);
-        _showInfoSnackBar('Device notifications disabled');
-      }
-    }
   }
 
   Future<void> _handleDateRangeSelection({required bool isForEmail}) async {
@@ -183,7 +128,6 @@ class _MorePageState extends State<MorePage> {
     final confirm = await _showLogoutConfirmation();
 
     if (confirm == true) {
-      _deviceNotificationService.dispose();
       await _auth.signOut();
 
       if (!mounted) return;
@@ -238,16 +182,6 @@ class _MorePageState extends State<MorePage> {
           ],
         ),
         backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showInfoSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: accent,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -322,33 +256,32 @@ class _MorePageState extends State<MorePage> {
   }
 
   @override
-  void dispose() {
-    _deviceNotificationService.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final textColor = isDark ? Colors.white : const Color(0xFF333333);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: accent,
-        foregroundColor: Colors.white,
-        centerTitle: true,
+        backgroundColor: bgColor,
         elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildSectionTitle('Profile', theme),
           _buildProfileCard(theme),
-          const SizedBox(height: 24),
-          _buildSectionTitle('Notifications', theme),
-          _buildNotificationsCard(theme),
           const SizedBox(height: 24),
           _buildSectionTitle('Settings', theme),
           _buildSettingsCard(theme),
@@ -409,26 +342,6 @@ class _MorePageState extends State<MorePage> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationsCard(ThemeData theme) {
-    return Container(
-      decoration: _cardDecoration(theme),
-      child: SwitchListTile(
-        secondary: const Icon(Icons.notifications_active, color: accent),
-        title: Text('Device Notifications', style: theme.textTheme.bodyMedium),
-        subtitle: Text(
-          'Receive budget alerts on your device',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodyMedium!.color!.withOpacity(0.6),
-          ),
-        ),
-        value: _deviceNotificationsEnabled,
-        activeColor: accent,
-        onChanged:
-            _isLoadingNotificationStatus ? null : _toggleDeviceNotifications,
       ),
     );
   }

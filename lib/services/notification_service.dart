@@ -1,15 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
-
-
 class NotificationService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-
-
 
   String get userId {
     final user = _auth.currentUser;
@@ -17,10 +11,7 @@ class NotificationService {
     return user.uid;
   }
 
-
-
-
-  // Check budget and create notifications
+  // Check budget and create notifications (with duplicate prevention)
   Future<void> checkBudgetAndNotify({
     required int year,
     required int month,
@@ -29,13 +20,25 @@ class NotificationService {
   }) async {
     if (budget <= 0) return;
 
-
-
-
     final percentage = (spent / budget) * 100;
 
+    // Only proceed if percentage is 80% or above
+    if (percentage < 80) {
+      print('ℹ️ Spending at ${percentage.toStringAsFixed(1)}% - below 80% threshold');
+      return;
+    }
 
+    // Check if a notification with this percentage already exists
+    final exists = await _notificationExistsForPercentage(
+      year: year,
+      month: month,
+      percentage: percentage,
+    );
 
+    if (exists) {
+      print('ℹ️ Notification already exists for ${percentage.toStringAsFixed(1)}% - skipping duplicate');
+      return;
+    }
 
     // Determine notification level and create notification
     if (percentage >= 100) {
@@ -51,19 +54,6 @@ class NotificationService {
         level: 'danger',
         thresholdType: 'exceeded',
       );
-    } else if (percentage >= 90) {
-      // 90% or more
-      await _createNotification(
-        year: year,
-        month: month,
-        spent: spent,
-        budget: budget,
-        percentage: percentage,
-        title: "Budget Warning: ${percentage.toStringAsFixed(1)}%",
-        message: "Alert! You've used ${percentage.toStringAsFixed(1)}% of your budget. You've spent ฿${spent.toStringAsFixed(2)}. Please be mindful of your expenses.",
-        level: 'warning',
-        thresholdType: 'warning',
-      );
     } else if (percentage >= 80) {
       // 80% or more
       await _createNotification(
@@ -74,16 +64,44 @@ class NotificationService {
         percentage: percentage,
         title: "Budget Alert: ${percentage.toStringAsFixed(1)}%",
         message: "You've used ${percentage.toStringAsFixed(1)}% of your budget for this month. You've spent ฿${spent.toStringAsFixed(2)}. Consider reviewing your spending.",
-        level: 'caution',
-        thresholdType: 'caution',
+        level: 'warning',
+        thresholdType: 'warning',
       );
     }
   }
 
+  // Check if a notification with this percentage already exists for this month
+  Future<bool> _notificationExistsForPercentage({
+    required int year,
+    required int month,
+    required double percentage,
+  }) async {
+    try {
+      final querySnapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .where('year', isEqualTo: year)
+          .where('month', isEqualTo: month)
+          .get();
 
+      // Check if any notification has the same percentage (within 0.1% tolerance)
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        final existingPercentage = data['percentage'] as double?;
+        if (existingPercentage != null && 
+            (percentage - existingPercentage).abs() < 0.1) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('❌ Error checking percentage existence: $e');
+      return false;
+    }
+  }
 
-
-  // Create new notification (always creates, never updates)
+  // Create notification
   Future<void> _createNotification({
     required int year,
     required int month,
@@ -96,7 +114,6 @@ class NotificationService {
     required String thresholdType,
   }) async {
     try {
-      // Always create a new notification
       await _db
           .collection('users')
           .doc(userId)
@@ -104,25 +121,22 @@ class NotificationService {
           .add({
         'title': title,
         'message': message,
-        'level': level, // caution, warning, danger
+        'level': level, // warning, danger
         'percentage': percentage,
         'spent': spent,
         'budget': budget,
         'year': year,
         'month': month,
-        'thresholdType': thresholdType, // caution, warning, exceeded
+        'thresholdType': thresholdType, // warning, exceeded
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
-      
-      print('✅ Notification created in Firestore: $title');
+
+      print('✅ Notification created: $title (${percentage.toStringAsFixed(1)}%)');
     } catch (e) {
       print('❌ Error creating notification: $e');
     }
   }
-
-
-
 
   // Get all notifications stream
   Stream<List<Map<String, dynamic>>> getNotificationsStream() {
@@ -139,9 +153,6 @@ class NotificationService {
             }).toList());
   }
 
-
-
-
   // Get unread count
   Stream<int> getUnreadCountStream() {
     return _db
@@ -152,9 +163,6 @@ class NotificationService {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
-
-
-
 
   // Mark notification as read
   Future<void> markAsRead(String notificationId) async {
@@ -169,9 +177,6 @@ class NotificationService {
       print('Error marking notification as read: $e');
     }
   }
-
-
-
 
   // Mark multiple notifications as read
   Future<void> markMultipleAsRead(List<String> notificationIds) async {
@@ -191,9 +196,6 @@ class NotificationService {
     }
   }
 
-
-
-
   // Delete notification
   Future<void> deleteNotification(String notificationId) async {
     try {
@@ -207,9 +209,6 @@ class NotificationService {
       print('Error deleting notification: $e');
     }
   }
-
-
-
 
   // Delete multiple notifications
   Future<void> deleteMultiple(List<String> notificationIds) async {
@@ -228,7 +227,69 @@ class NotificationService {
       print('Error deleting notifications: $e');
     }
   }
+
+  // Delete old notifications for a month (useful when budget is reset)
+  Future<void> deleteNotificationsForMonth({
+    required int year,
+    required int month,
+  }) async {
+    try {
+      final querySnapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .where('year', isEqualTo: year)
+          .where('month', isEqualTo: month)
+          .get();
+
+      final batch = _db.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      print('✅ Deleted notifications for $month/$year (budget reset)');
+    } catch (e) {
+      print('❌ Error deleting month notifications: $e');
+    }
+  }
+
+  // Clear all old notifications when a new month starts
+  Future<void> cleanupOldMonthNotifications() async {
+    try {
+      final now = DateTime.now();
+      final currentYear = now.year;
+      final currentMonth = now.month;
+
+      final querySnapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .get();
+
+      final batch = _db.batch();
+      int deleteCount = 0;
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        final year = data['year'] as int?;
+        final month = data['month'] as int?;
+
+        // Delete notifications from previous months
+        if (year != null && month != null) {
+          if (year < currentYear || (year == currentYear && month < currentMonth)) {
+            batch.delete(doc.reference);
+            deleteCount++;
+          }
+        }
+      }
+
+      if (deleteCount > 0) {
+        await batch.commit();
+        print('✅ Cleaned up $deleteCount old notifications');
+      }
+    } catch (e) {
+      print('❌ Error cleaning up old notifications: $e');
+    }
+  }
 }
-
-
-

@@ -33,13 +33,14 @@ class _NotificationPageState extends State<NotificationPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
+        centerTitle: true,
         title: Text(
           _isSelectionMode 
               ? '${_selectedIds.length} selected' 
               : 'Notifications',
           style: TextStyle(
             color: textColor,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
@@ -65,7 +66,7 @@ class _NotificationPageState extends State<NotificationPage> {
               tooltip: 'Delete',
             ),
             IconButton(
-              icon: Icon(Icons.close, color: textColor),
+              icon: Icon(Icons.close, color: accent),
               onPressed: () {
                 setState(() {
                   _isSelectionMode = false;
@@ -353,13 +354,13 @@ class _NotificationPageState extends State<NotificationPage> {
   IconData _getIconForLevel(String level) {
     switch (level) {
       case 'caution':
-        return Icons.circle;
+        return Icons.warning_amber_rounded;
       case 'warning':
-        return Icons.circle;
+        return Icons.error_outline_rounded;
       case 'danger':
-        return Icons.circle;
+        return Icons.dangerous_rounded;
       default:
-        return Icons.circle;
+        return Icons.notifications;
     }
   }
 

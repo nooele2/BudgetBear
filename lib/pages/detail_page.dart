@@ -268,12 +268,15 @@ class _DetailPageState extends State<DetailPage> {
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
+        centerTitle: true,
         leading: BackButton(color: textColor),
         title: Text(
           'Transaction Details',
-          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: Stack(

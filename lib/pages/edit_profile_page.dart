@@ -98,12 +98,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+    final textColor = isDark ? Colors.white : const Color(0xFF333333);
+
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Edit Profile'),
-        backgroundColor: accent,
-        foregroundColor: Colors.white,
+        backgroundColor: bgColor,
+        elevation: 0,
         centerTitle: true,
+        title: Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        leading: BackButton(color: textColor),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -118,12 +131,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 16),
             TextField(
               controller: _nameController,
-              decoration: _inputDecoration('Display Name'),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration('Display Name', isDark),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _emailController,
-              decoration: _inputDecoration('Email'),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration('Email', isDark),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -146,7 +161,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             TextField(
               controller: _newPasswordController,
               obscureText: true,
-              decoration: _inputDecoration('New Password'),
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration('New Password', isDark),
             ),
             const SizedBox(height: 8),
             SizedBox(
@@ -170,18 +186,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String label, bool isDark) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.grey),
+      labelStyle: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey),
       enabledBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: accent),
+        borderSide: BorderSide(
+          color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       focusedBorder: OutlineInputBorder(
         borderSide: const BorderSide(color: accent, width: 2),
         borderRadius: BorderRadius.circular(12),
       ),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
     );
   }
 }
