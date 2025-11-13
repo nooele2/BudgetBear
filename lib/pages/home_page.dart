@@ -305,7 +305,7 @@ class _HomePageState extends State<HomePage> {
             subtextColor: subtextColor,
           ),
           SummaryCardWidget(
-            title: "Net Savings",
+            title: "Net Income",
             amount: "฿${netSavings.toStringAsFixed(2)}",
             icon: Icons.account_balance_wallet,
             color: accent,
