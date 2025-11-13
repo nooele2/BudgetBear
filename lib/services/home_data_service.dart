@@ -61,8 +61,6 @@ class HomeDataService {
     required double totalSpending,
     required double monthlyBudget,
   }) {
-    return (monthlyBudget > 0)
-        ? (monthlyBudget - totalSpending)
-        : (totalIncome - totalSpending);
+    return totalIncome - totalSpending;
   }
 }
