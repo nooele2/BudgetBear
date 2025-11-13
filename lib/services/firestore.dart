@@ -117,48 +117,76 @@ class FirestoreService {
             }).toList());
   }
 
+  /// Stream of transactions for a specific month and year (real-time updates)
+  Stream<List<Map<String, dynamic>>> getTransactionsByMonth(int year, int month) {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream.empty();
+
+    final start = DateTime(year, month, 1);
+    final nextMonth = (month < 12)
+        ? DateTime(year, month + 1, 1)
+        : DateTime(year + 1, 1, 1);
+
+    return _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('transactions')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThan: Timestamp.fromDate(nextMonth))
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = doc.data();
+              if (data['amount'] is num) {
+                data['amount'] = (data['amount'] as num).toDouble();
+              }
+              data['id'] = doc.id; // Include document ID for potential editing
+              return data;
+            }).toList());
+  }
+
   /// Helper for adding a transaction (used in testing or record page)
   /// UPDATED: Now checks budget notifications after adding expense
-Future<void> addTransaction({
-  required String title,
-  required String category,
-  required double amount,
-  required String type, // 'income' or 'expense'
-  DateTime? date,        // optional user-picked date
-}) async {
-  // If a date is provided, keep its year/month/day but add current time
-  final now = DateTime.now();
-  final transactionDate = date != null
-      ? DateTime(
-          date.year,
-          date.month,
-          date.day,
-          now.hour,
-          now.minute,
-          now.second,
-        )
-      : now; // if no date, use current time
+  Future<void> addTransaction({
+    required String title,
+    required String category,
+    required double amount,
+    required String type, // 'income' or 'expense'
+    DateTime? date,        // optional user-picked date
+  }) async {
+    // If a date is provided, keep its year/month/day but add current time
+    final now = DateTime.now();
+    final transactionDate = date != null
+        ? DateTime(
+            date.year,
+            date.month,
+            date.day,
+            now.hour,
+            now.minute,
+            now.second,
+          )
+        : now; // if no date, use current time
 
-  final ref = _db
-      .collection('users')
-      .doc(userId)
-      .collection('transactions')
-      .doc();
+    final ref = _db
+        .collection('users')
+        .doc(userId)
+        .collection('transactions')
+        .doc();
 
-  await ref.set({
-    'title': title,
-    'category': category,
-    'amount': amount,
-    'type': type,
-    'date': Timestamp.fromDate(transactionDate),
-    'createdAt': FieldValue.serverTimestamp(),
-  });
+    await ref.set({
+      'title': title,
+      'category': category,
+      'amount': amount,
+      'type': type,
+      'date': Timestamp.fromDate(transactionDate),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
-  // Check notifications only for expenses
-  if (type.toLowerCase() == 'expense') {
-    await _checkBudgetNotification(transactionDate.year, transactionDate.month);
+    // Check notifications only for expenses
+    if (type.toLowerCase() == 'expense') {
+      await _checkBudgetNotification(transactionDate.year, transactionDate.month);
+    }
   }
-}
 
   /// Helper method to check budget notifications
   Future<void> _checkBudgetNotification(int year, int month) async {

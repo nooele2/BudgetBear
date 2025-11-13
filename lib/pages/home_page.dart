@@ -173,8 +173,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Recent Transactions
-                    _buildRecentTransactionsSection(
+                    // Month Records (formerly Recent Transactions)
+                    _buildMonthRecordsSection(
                       textColor: textColor,
                       subtextColor: subtextColor,
                       cardColor: cardColor,
@@ -389,18 +389,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildRecentTransactionsSection({
+  Widget _buildMonthRecordsSection({
     required Color textColor,
     required Color subtextColor,
     required Color cardColor,
   }) {
+    // Get the month name for display
+    final monthName = MonthYearPicker.months[currentMonthIndex];
+    
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Recent Transactions",
+              "$monthName Records",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -426,21 +429,28 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 16),
         StreamBuilder(
-          stream: _firestoreService.getRecentTransactionsStream(),
+          stream: _firestoreService.getTransactionsByMonth(
+            selectedYear,
+            currentMonthIndex + 1, // Convert to 1-based month
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return Text(
-                "No transactions yet",
+                "No transactions for this month",
                 style: TextStyle(color: subtextColor, fontSize: 16),
               );
             }
 
             final transactions = snapshot.data!;
+            
+            // Take only the first 5 transactions for the home page
+            final displayTransactions = transactions.take(5).toList();
+            
             return Column(
-              children: transactions.map<Widget>((tx) {
+              children: displayTransactions.map<Widget>((tx) {
                 final type = (tx['type'] ?? '').toString().toLowerCase();
                 final isExpense = type == 'expense';
                 final amount = (tx['amount'] ?? 0.0).toDouble();
