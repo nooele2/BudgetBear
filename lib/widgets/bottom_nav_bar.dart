@@ -52,6 +52,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
   @override
   Widget build(BuildContext context) {
     const Color accent = Color.fromRGBO(71, 168, 165, 1);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final unselectedColor = isDark ? Colors.grey[400] : Colors.grey;
 
     return StreamBuilder<int>(
       stream: NotificationService().getUnreadCountStream(),
@@ -62,7 +65,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: isDark 
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.black.withOpacity(0.1),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -71,13 +76,13 @@ class _BottomNavBarState extends State<BottomNavBar> {
           child: BottomNavigationBar(
             currentIndex: widget.currentIndex,
             selectedItemColor: accent,
-            unselectedItemColor: Colors.grey,
+            unselectedItemColor: unselectedColor,
             showSelectedLabels: true,
             showUnselectedLabels: true,
             type: BottomNavigationBarType.fixed,
             onTap: _onItemTapped,
             elevation: 0,
-            backgroundColor: Colors.white,
+            backgroundColor: backgroundColor,
             selectedFontSize: 12,
             unselectedFontSize: 11,
             iconSize: 26,
