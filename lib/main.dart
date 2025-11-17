@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:budget_bear/firebase_options.dart';
 import 'package:budget_bear/auth/auth_page.dart';
 import 'package:budget_bear/services/theme_provider.dart'; 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
-  await dotenv.load(fileName: ".env");
+  const sendgridKey = String.fromEnvironment('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', defaultValue: '');
+const senderEmail = String.fromEnvironment('budgetbear77@gmail.com', defaultValue: '');
+const senderName = String.fromEnvironment('Budget Bear', defaultValue: '');
+const openrouterKey = String.fromEnvironment('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', defaultValue: '');
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
